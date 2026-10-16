@@ -1,4 +1,4 @@
-name: Build TouchController 1.20.1 Forge (Root Structure Fix)
+name: Build TouchController 1.20.1 Forge (Correct Path & Clean Build)
 
 on:
   push:
@@ -51,20 +51,26 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      # ⚠️ 绝对核心修改：直接输出到 resources 目录，让 Gradle 打包时自动放到 Jar 根目录
-      - name: 编译 Rust 触控底层代码（复刻豆包结构）
+      # 核心：编译并搬运到正确的 META-INF 路径
+      - name: 编译 Rust 并搬运到正确路径
         run: |
           cd proxy-server-android
-          # 清理旧缓存
           cargo clean
           
-          # 直接输出到 resources 目录（不要加 lib 或 arm64-v8a 路径）
-          mkdir -p ../mod/1.20.1/forge-1.20.1/src/main/resources
-          cargo ndk -t arm64-v8a -o ../mod/1.20.1/forge-1.20.1/src/main/resources build --release
+          # 1. 编译 Rust (输出到临时目录)
+          mkdir -p ./rust-temp-output
+          cargo ndk -t arm64-v8a -o ./rust-temp-output build --release
           
-          # 打印看看生成了什么
-          echo "===== 最终生成的底层库目录 ====="
-          ls -la ../mod/1.20.1/forge-1.20.1/src/main/resources
+          # 2. 创建模组源码要求的正确路径
+          TARGET_DIR="../mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android"
+          mkdir -p $TARGET_DIR
+          
+          # 3. 找到编译好的 .so 并复制过去（重命名为模组需要的名字）
+          find ./rust-temp-output -name "*.so" -exec cp {} $TARGET_DIR/libproxy_server_android.so \;
+          
+          # 4. 打印确认
+          echo "===== 成功搬运至以下路径 ====="
+          ls -la $TARGET_DIR
 
       - name: Gradle编译1.20.1 Forge
         run: |
