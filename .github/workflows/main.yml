@@ -1,4 +1,4 @@
-name: Build TouchController 1.20.1 Forge (Final Zip Inject)
+name: Build TouchController 1.20.1 Forge (Absolute Fix)
 
 on:
   push:
@@ -71,24 +71,36 @@ jobs:
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      # 终极修复：用 zip 命令强行注入，避免 jar 命令的路径 Bug
-      - name: 强制将 .so 注入主 Jar 包 (改用 zip)
+      # 终极修复：用绝对路径和 zip 命令暴力注入
+      - name: 强制将 .so 注入主 Jar 包
         run: |
-          # 1. 精准寻找最终的 5MB 主包（必须包含 reobf，且排除 noreobf 和 slim）
-          MAIN_JAR=$(find mod/1.20.1/forge-1.20.1/build/libs -name "TouchController-*.jar" | grep "reobf" | grep -v "noreobf" | head -n 1)
-          echo "找到主 Jar 包: $MAIN_JAR"
+          cd ${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs
           
-          # 2. 建立临时注入目录
-          mkdir -p inject_dir/META-INF/native/android/aarch64-linux-android
-          cp mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android/libproxy_server_android.so inject_dir/META-INF/native/android/aarch64-linux-android/
+          echo "===== 扫描当前目录下的所有 Jar 文件 ====="
+          ls -la *.jar
           
-          # 3. 进入临时目录，使用 zip -g 命令直接注入
-          cd inject_dir
-          zip -g "../../$MAIN_JAR" META-INF/native/android/aarch64-linux-android/libproxy_server_android.so
+          # 寻找主包：明确排除 slim 和 noreobf
+          MAIN_JAR=$(ls *.jar | grep -v "slim" | grep -v "noreobf" | head -n 1)
+          echo "最终选中的主包是: $MAIN_JAR"
           
-          # 4. 校验是否注入成功
-          echo "===== 校验注入结果 ====="
-          unzip -l "../../$MAIN_JAR" | grep "libproxy_server_android.so"
+          if [ -z "$MAIN_JAR" ]; then
+            echo "错误: 没有找到主包！"
+            exit 1
+          fi
+          
+          # 建立临时注入目录
+          mkdir -p /tmp/inject_dir/META-INF/native/android/aarch64-linux-android
+          
+          # 复制 .so 文件
+          cp ${{ github.workspace }}/mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android/libproxy_server_android.so /tmp/inject_dir/META-INF/native/android/aarch64-linux-android/
+          
+          # 使用 zip -g 强制注入（绝对路径）
+          cd /tmp/inject_dir
+          zip -g "${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs/$MAIN_JAR" META-INF/native/android/aarch64-linux-android/libproxy_server_android.so
+          
+          # 校验是否真的注入进去了
+          echo "===== 验证注入结果 ====="
+          unzip -l "${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs/$MAIN_JAR" | grep "libproxy_server_android.so"
 
       - name: 输出jar产物
         uses: actions/upload-artifact@v4
