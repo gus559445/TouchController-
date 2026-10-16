@@ -1,4 +1,4 @@
-name: Build TouchController 1.20.1 Forge (All Architectures)
+name: Build TouchController 1.20.1 Forge (Root Structure Fix)
 
 on:
   push:
@@ -38,11 +38,10 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
-      # 增加全架构的 Rust 目标
       - name: Setup Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+          targets: aarch64-linux-android
 
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
@@ -52,18 +51,20 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      # 编译全架构 Rust 代码
-      - name: 编译 Rust 全架构底层代码
+      # ⚠️ 绝对核心修改：直接输出到 resources 目录，让 Gradle 打包时自动放到 Jar 根目录
+      - name: 编译 Rust 触控底层代码（复刻豆包结构）
         run: |
           cd proxy-server-android
-          # 去掉具体架构名，让 cargo-ndk 根据 -t 参数自己建立对应的架构文件夹
-          mkdir -p ../mod/1.20.1/forge-1.20.1/src/main/resources/lib
-          # 添加了所有主流安卓架构
-          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86 -t x86_64 -o ../mod/1.20.1/forge-1.20.1/src/main/resources/lib build --release
+          # 清理旧缓存
+          cargo clean
           
-          # 打印编译产物，确认生成了哪些 .so 文件
-          echo "===== 检查编译产物 ====="
-          find ../mod/1.20.1/forge-1.20.1/src/main/resources/lib -type f
+          # 直接输出到 resources 目录（不要加 lib 或 arm64-v8a 路径）
+          mkdir -p ../mod/1.20.1/forge-1.20.1/src/main/resources
+          cargo ndk -t arm64-v8a -o ../mod/1.20.1/forge-1.20.1/src/main/resources build --release
+          
+          # 打印看看生成了什么
+          echo "===== 最终生成的底层库目录 ====="
+          ls -la ../mod/1.20.1/forge-1.20.1/src/main/resources
 
       - name: Gradle编译1.20.1 Forge
         run: |
