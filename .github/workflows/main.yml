@@ -51,18 +51,17 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      # 核心步骤：编译 Rust 代码
+      # 核心修复：修正输出路径，解决多一层文件夹的问题
       - name: 编译 Rust 触控底层代码
         run: |
-          # 1. 进入包含 Cargo.toml 的 android 目录（根据你截图里有 Cargo.toml 的目录）
           cd proxy-server-android
+          # 注意这里去掉了路径末尾的 /arm64-v8a，让 cargo-ndk 自己创建
+          mkdir -p ../mod/1.20.1/forge-1.20.1/src/main/resources/lib
+          cargo ndk -t arm64-v8a -o ../mod/1.20.1/forge-1.20.1/src/main/resources/lib build --release
           
-          # 2. 编译 Rust，并输出到 Forge 模块的 resources 目录下
-          mkdir -p ../mod/1.20.1/forge-1.20.1/src/main/resources/lib/arm64-v8a
-          cargo ndk -t arm64-v8a -o ../mod/1.20.1/forge-1.20.1/src/main/resources/lib/arm64-v8a build --release
-          
-          # 3. 打印一下文件，确认是否真的生成了
-          ls -la ../mod/1.20.1/forge-1.20.1/src/main/resources/lib/arm64-v8a/
+          # 打印路径，方便我们在日志里确认生成位置是否正确
+          echo "===== 检查编译产物 ====="
+          find ../mod/1.20.1/forge-1.20.1/src/main/resources/lib -type f
 
       - name: Gradle编译1.20.1 Forge
         run: |
