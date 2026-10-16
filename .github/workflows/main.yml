@@ -11,7 +11,6 @@ jobs:
       - name: Checkout 仓库文件
         uses: actions/checkout@v4
 
-      # 重点！恢复解压源码包，把源码释放到工作目录
       - name: 解压 source.zip
         run: unzip source.zip
 
@@ -47,20 +46,18 @@ jobs:
       - name: Install cargo‑ndk
         run: cargo install cargo-ndk
 
-      - name: 设置NDK编译架构
-        run: echo "CARGO_NDK_TARGETS=aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android" >> $GITHUB_ENV
-
       - name: 生成local.properties
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      - name: Gradle编译1.20.1 Forge
+      - name: Gradle编译1.20.1 Forge（编译Android原生库+复制+打包）
         run: |
           chmod +x gradlew
-          ./gradlew :mod:1.20.1:forge-1.20.1:build --no-daemon --no-parallel
+          ./gradlew :mod:1.20.1:forge-1.20.1:copyNativeLibs assemble --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
+          CARGO_NDK_TARGETS: "aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android"
 
       - name: 输出jar产物
         uses: actions/upload-artifact@v4
