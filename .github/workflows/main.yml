@@ -1,4 +1,5 @@
-name: Build TouchController JDK21
+name: Build TouchController 1.20.1 Forge (Rust & Android)
+
 on:
   push:
     branches: [ main ]
@@ -11,6 +12,7 @@ jobs:
       - name: Checkout 仓库文件
         uses: actions/checkout@v4
 
+      # 重点！恢复解压源码包，把源码释放到工作目录
       - name: 解压 source.zip
         run: unzip source.zip
 
@@ -37,14 +39,18 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
+      # 修改 1：使用目前最稳定、未废弃的 Rust 工具链 Action，并直接指定安卓目标
       - name: Setup Rust stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
+          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android, i686-linux-android
 
-      - name: Install cargo‑ndk
+      - name: Install cargo-ndk
         run: cargo install cargo-ndk
+
+      # 修改 2：增加 Rust 依赖缓存，第二次编译会快非常多！
+      - name: 缓存 Rust 依赖
+        uses: Swatinem/rust-cache@v2
 
       - name: 生成local.properties
         run: |
@@ -54,13 +60,14 @@ jobs:
       - name: Gradle编译1.20.1 Forge
         run: |
           chmod +x gradlew
-          ./gradlew :mod:1.20.1:forge-1.20.1:assemble --no-daemon --no-parallel
+          # 注意：请确保这里的模块路径 :mod:1.20.1:forge-1.20.1 与你项目 settings.gradle 里的完全一致
+          ./gradlew :mod:1.20.1:forge-1.20.1:build --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
-          CARGO_NDK_TARGETS: "aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android"
 
+      # 修改 3：放宽 Jar 路径搜索，防止因为多套了一层文件夹而找不到包
       - name: 输出jar产物
         uses: actions/upload-artifact@v4
         with:
           name: TouchController-output
-          path: mod/1.20.1/forge-1.20.1/build/libs/*.jar
+          path: "**/build/libs/*.jar"
