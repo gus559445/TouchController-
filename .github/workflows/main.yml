@@ -1,4 +1,4 @@
-name: Build TouchController 1.20.1 Forge (Rust & Android)
+name: Build TouchController 1.20.1 Forge (All Architectures)
 
 on:
   push:
@@ -38,10 +38,11 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
+      # 增加全架构的 Rust 目标
       - name: Setup Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android
+          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
 
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
@@ -51,15 +52,16 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      # 核心修复：修正输出路径，解决多一层文件夹的问题
-      - name: 编译 Rust 触控底层代码
+      # 编译全架构 Rust 代码
+      - name: 编译 Rust 全架构底层代码
         run: |
           cd proxy-server-android
-          # 注意这里去掉了路径末尾的 /arm64-v8a，让 cargo-ndk 自己创建
+          # 去掉具体架构名，让 cargo-ndk 根据 -t 参数自己建立对应的架构文件夹
           mkdir -p ../mod/1.20.1/forge-1.20.1/src/main/resources/lib
-          cargo ndk -t arm64-v8a -o ../mod/1.20.1/forge-1.20.1/src/main/resources/lib build --release
+          # 添加了所有主流安卓架构
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86 -t x86_64 -o ../mod/1.20.1/forge-1.20.1/src/main/resources/lib build --release
           
-          # 打印路径，方便我们在日志里确认生成位置是否正确
+          # 打印编译产物，确认生成了哪些 .so 文件
           echo "===== 检查编译产物 ====="
           find ../mod/1.20.1/forge-1.20.1/src/main/resources/lib -type f
 
