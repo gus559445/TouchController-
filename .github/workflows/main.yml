@@ -22,7 +22,6 @@ jobs:
             mv ./$innerdir/* ./
           fi
 
-      # 重点：改回 JDK 21
       - name: Setup JDK 21 Temurin
         uses: actions/setup-java@v4
         with:
@@ -52,13 +51,19 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      # 关键：编译底层 Rust 代码
-      - name: 编译 Rust 触控底层代码 (仅 arm64)
+      # 核心步骤：编译 Rust 代码
+      - name: 编译 Rust 触控底层代码
         run: |
-          mkdir -p mod/1.20.1/forge-1.20.1/src/main/jniLibs/arm64-v8a
-          cargo ndk -t arm64-v8a -o mod/1.20.1/forge-1.20.1/src/main/jniLibs build --release
+          # 1. 进入包含 Cargo.toml 的 android 目录（根据你截图里有 Cargo.toml 的目录）
+          cd proxy-server-android
+          
+          # 2. 编译 Rust，并输出到 Forge 模块的 resources 目录下
+          mkdir -p ../mod/1.20.1/forge-1.20.1/src/main/resources/lib/arm64-v8a
+          cargo ndk -t arm64-v8a -o ../mod/1.20.1/forge-1.20.1/src/main/resources/lib/arm64-v8a build --release
+          
+          # 3. 打印一下文件，确认是否真的生成了
+          ls -la ../mod/1.20.1/forge-1.20.1/src/main/resources/lib/arm64-v8a/
 
-      # 重新打包，确保包含 .so 文件
       - name: Gradle编译1.20.1 Forge
         run: |
           chmod +x gradlew
