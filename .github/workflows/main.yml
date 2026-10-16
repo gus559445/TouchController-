@@ -12,10 +12,11 @@ jobs:
       - name: Checkout 仓库文件
         uses: actions/checkout@v4
 
-      # 重点！恢复解压源码包，把源码释放到工作目录
+      # 1. 解压源码
       - name: 解压 source.zip
         run: unzip source.zip
 
+      # 2. 将源码移动到工作根目录
       - name: 将源码移动到工作根目录
         run: |
           innerdir=$(unzip -qql source.zip | head -1 | awk '{print $4}' | cut -d/ -f1)
@@ -23,12 +24,14 @@ jobs:
             mv ./$innerdir/* ./
           fi
 
-      - name: Setup JDK 21 Temurin
-        uses: actions/setup-java@v5
+      # 3. 配置 Java (注意：Minecraft 1.20.1 官方推荐 JDK 17)
+      - name: Setup JDK 17 Temurin
+        uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
 
+      # 4. 配置 Android SDK + NDK (保留你的配置)
       - name: Setup Android SDK + NDK r25c
         uses: android-actions/setup-android@v3
         with:
@@ -39,35 +42,41 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
-      # 修改 1：使用目前最稳定、未废弃的 Rust 工具链 Action，并直接指定安卓目标
+      # 5. 替换为目前最稳定的 Rust 工具链 Action，并直接指定安卓目标
       - name: Setup Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android, i686-linux-android
+          targets: aarch64-linux-android
 
+      # 6. 安装 cargo-ndk
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
 
-      # 修改 2：增加 Rust 依赖缓存，第二次编译会快非常多！
-      - name: 缓存 Rust 依赖
-        uses: Swatinem/rust-cache@v2
-
+      # 7. 生成 local.properties (确保指向正确的 NDK 路径)
       - name: 生成local.properties
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
+      # 8. 核心步骤：手动编译 Rust 代码生成 .so 并放入 jniLibs 目录
+      - name: 编译 Rust 触控底层代码 (仅 arm64)
+        run: |
+          # 由于源码里存在多个 Cargo.toml（是Workspace），直接在根目录运行 cargo ndk
+          # 输出路径指向 Forge 模块的 jniLibs/arm64-v8a
+          mkdir -p mod/1.20.1/forge-1.20.1/src/main/jniLibs/arm64-v8a
+          cargo ndk -t arm64-v8a -o mod/1.20.1/forge-1.20.1/src/main/jniLibs build --release
+
+      # 9. 清理并重新运行 Gradle 打包（加上 clean 确保把新的 so 塞进 Jar 包）
       - name: Gradle编译1.20.1 Forge
         run: |
           chmod +x gradlew
-          # 注意：请确保这里的模块路径 :mod:1.20.1:forge-1.20.1 与你项目 settings.gradle 里的完全一致
-          ./gradlew :mod:1.20.1:forge-1.20.1:build --no-daemon --no-parallel
+          ./gradlew :mod:1.20.1:forge-1.20.1:clean :mod:1.20.1:forge-1.20.1:build --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      # 修改 3：放宽 Jar 路径搜索，防止因为多套了一层文件夹而找不到包
+      # 10. 输出产物
       - name: 输出jar产物
         uses: actions/upload-artifact@v4
         with:
           name: TouchController-output
-          path: "**/build/libs/*.jar"
+          path: mod/1.20.1/forge-1.20.1/build/libs/*.jar
