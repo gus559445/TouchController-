@@ -1,5 +1,66 @@
-run: unzip TouchController-0.2.1-beta14.zip- name: 解压zip源码包
+name: Build TouchController‑0.2.1‑beta14
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout workflow files
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 解压TouchController‑0.2.1‑beta14.zip
         run: unzip TouchController-0.2.1-beta14.zip
 
       - name: 将源码移动到工作根目录
         run: mv ./*/!(.github) ./ 2>/dev/null || true
+
+      - name: Setup JDK 17 Temurin
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK + NDK r25c
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 11076708
+          packages: >
+            platforms;android-33
+            build-tools;33.0.2
+            ndk;25.2.9519653
+            cmake;3.22.1
+
+      - name: Setup Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install cargo‑ndk
+        run: cargo install cargo-ndk
+
+      - name: 设置NDK编译目标架构
+        run: echo "CARGO_NDK_TARGETS=aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android" >> $GITHUB_ENV
+
+      - name: 生成local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
+
+      - name: Gradle编译1.20.1 Forge
+        run: |
+          chmod +x gradlew
+          ./gradlew :mod:1.20.1:forge-1.20.1:build --no-daemon --no-parallel
+        env:
+          GRADLE_OPTS: "-Xmx4G"
+
+      - name: 导出编译产物jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: TouchController‑0.2.1‑beta14‑1.20.1
+          path: mod/1.20.1/forge-1.20.1/build/libs/*.jar
