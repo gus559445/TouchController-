@@ -1,4 +1,4 @@
-name: Build TouchController 1.20.1 Forge (Final Inject)
+name: Build TouchController 1.20.1 Forge (Final Zip Inject)
 
 on:
   push:
@@ -55,19 +55,12 @@ jobs:
         run: |
           cd proxy-server-android
           cargo clean
-          
-          # 1. 编译 Rust
           mkdir -p ./rust-temp-output
           cargo ndk -t arm64-v8a -o ./rust-temp-output build --release
           
-          # 2. 创建模组源码要求的正确路径
           TARGET_DIR="../mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android"
           mkdir -p $TARGET_DIR
-          
-          # 3. 找到编译好的 .so 并复制过去（重命名为模组需要的名字）
           find ./rust-temp-output -name "*.so" -exec cp {} $TARGET_DIR/libproxy_server_android.so \;
-          
-          # 4. 打印确认
           echo "===== 成功搬运至以下路径 ====="
           ls -la $TARGET_DIR
 
@@ -78,24 +71,24 @@ jobs:
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      # 终极修复：强行把 .so 塞进最终的 5MB 主 Jar 包中
-      - name: 强制将 .so 注入主 Jar 包
+      # 终极修复：用 zip 命令强行注入，避免 jar 命令的路径 Bug
+      - name: 强制将 .so 注入主 Jar 包 (改用 zip)
         run: |
-          # 1. 精准找到最终的 5MB 主包（排除 slim 和 no-reobf）
-          MAIN_JAR=$(find mod/1.20.1/forge-1.20.1/build/libs -name "TouchController-*.jar" | grep -v "slim" | grep -v "no-reobf" | head -n 1)
+          # 1. 精准寻找最终的 5MB 主包（必须包含 reobf，且排除 noreobf 和 slim）
+          MAIN_JAR=$(find mod/1.20.1/forge-1.20.1/build/libs -name "TouchController-*.jar" | grep "reobf" | grep -v "noreobf" | head -n 1)
           echo "找到主 Jar 包: $MAIN_JAR"
           
-          # 2. 建立临时注入目录并放入 .so
+          # 2. 建立临时注入目录
           mkdir -p inject_dir/META-INF/native/android/aarch64-linux-android
           cp mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android/libproxy_server_android.so inject_dir/META-INF/native/android/aarch64-linux-android/
           
-          # 3. 使用 jar 命令强行更新到主包中
+          # 3. 进入临时目录，使用 zip -g 命令直接注入
           cd inject_dir
-          jar uf "../../$MAIN_JAR" META-INF/native/android/aarch64-linux-android/libproxy_server_android.so
+          zip -g "../../$MAIN_JAR" META-INF/native/android/aarch64-linux-android/libproxy_server_android.so
           
-          # 4. 校验是否注入成功（日志里必须看到这个文件）
+          # 4. 校验是否注入成功
           echo "===== 校验注入结果 ====="
-          jar tf "../../$MAIN_JAR" | grep "libproxy_server_android.so"
+          unzip -l "../../$MAIN_JAR" | grep "libproxy_server_android.so"
 
       - name: 输出jar产物
         uses: actions/upload-artifact@v4
