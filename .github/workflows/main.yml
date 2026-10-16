@@ -8,10 +8,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout workflow files
+      - name: Checkout 完整仓库全部文件（包含zip源码包）
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          sparse-checkout: null
 
       - name: 解压TouchController‑0.2.1‑beta14.zip
         run: unzip TouchController-0.2.1-beta14.zip
