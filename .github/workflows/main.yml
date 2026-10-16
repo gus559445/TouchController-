@@ -51,10 +51,10 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      - name: Gradle编译1.20.1 Forge（编译Android原生库+复制+打包）
+      - name: Gradle编译1.20.1 Forge
         run: |
           chmod +x gradlew
-          ./gradlew :mod:1.20.1:forge-1.20.1:copyNativeLibs assemble --no-daemon --no-parallel
+          ./gradlew :mod:1.20.1:forge-1.20.1:assemble --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
           CARGO_NDK_TARGETS: "aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android"
