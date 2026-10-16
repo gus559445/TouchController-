@@ -1,4 +1,4 @@
-name: Build TouchController
+name: Build TouchController JDK21
 on:
   push:
     branches: [ main ]
@@ -8,27 +8,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 完整仓库全部文件
+      - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          sparse-checkout: null
 
-      - name: 解压 source.zip
-        run: unzip source.zip
-
-      - name: 源码移到根目录
-        run: |
-          innerdir=$(unzip -qql source.zip | head -1 | awk '{print $4}' | cut -d/ -f1)
-          if [ -n "$innerdir" ] && [ -d "$innerdir" ];then
-            mv ./$innerdir/* ./
-          fi
-
-      - name: Setup JDK 17
+      - name: Setup JDK 21 Temurin
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
+          cache: gradle
 
       - name: Setup Android SDK + NDK r25c
         uses: android-actions/setup-android@v3
