@@ -1,25 +1,104 @@
-- name: Gradle编译1.20.1 Forge
-  run: |
-    chmod +x gradlew
-    ./gradlew :mod:1.20.1:forge-1.20.1:clean :mod:1.20.1:forge-1.20.1:build --no-daemon --no-parallel
-  env:
-    GRADLE_OPTS: "-Xmx4G"
+name: Build TouchController 1.20.1 Forge (Final Inject)
 
-# 核心修复：打包完成后，暴力将 .so 注入到主 Jar 包中
-- name: 强制将 .so 注入主 Jar 包 (终极修复)
-  run: |
-    # 1. 找到生成的主 Jar 包 (排除 slim 和 no-reobf)
-    MAIN_JAR=$(find mod/1.20.1/forge-1.20.1/build/libs -name "TouchController-*.jar" | grep -v "slim" | grep -v "no-reobf" | head -n 1)
-    echo "找到主 Jar 包: $MAIN_JAR"
-    
-    # 2. 建立临时注入目录
-    mkdir -p inject_dir/META-INF/native/android/aarch64-linux-android
-    cp mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android/libproxy_server_android.so inject_dir/META-INF/native/android/aarch64-linux-android/
-    
-    # 3. 使用 jar 命令强行更新到主包中
-    cd inject_dir
-    jar uf "../../$MAIN_JAR" META-INF/native/android/aarch64-linux-android/libproxy_server_android.so
-    
-    # 4. 校验是否注入成功
-    echo "===== 校验注入结果 ====="
-    jar tf "../../$MAIN_JAR" | grep "libproxy_server_android.so"
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 仓库文件
+        uses: actions/checkout@v4
+
+      - name: 解压 source.zip
+        run: unzip source.zip
+
+      - name: 将源码移动到工作根目录
+        run: |
+          innerdir=$(unzip -qql source.zip | head -1 | awk '{print $4}' | cut -d/ -f1)
+          if [ -n "$innerdir" ] && [ -d "$innerdir" ];then
+            mv ./$innerdir/* ./
+          fi
+
+      - name: Setup JDK 21 Temurin
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK + NDK r25c
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 11076708
+          packages: >
+            platforms;android-33
+            build-tools;33.0.2
+            ndk;25.2.9519653
+            cmake;3.22.1
+
+      - name: Setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: 生成local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
+
+      - name: 编译 Rust 并搬运到正确路径
+        run: |
+          cd proxy-server-android
+          cargo clean
+          
+          # 1. 编译 Rust
+          mkdir -p ./rust-temp-output
+          cargo ndk -t arm64-v8a -o ./rust-temp-output build --release
+          
+          # 2. 创建模组源码要求的正确路径
+          TARGET_DIR="../mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android"
+          mkdir -p $TARGET_DIR
+          
+          # 3. 找到编译好的 .so 并复制过去（重命名为模组需要的名字）
+          find ./rust-temp-output -name "*.so" -exec cp {} $TARGET_DIR/libproxy_server_android.so \;
+          
+          # 4. 打印确认
+          echo "===== 成功搬运至以下路径 ====="
+          ls -la $TARGET_DIR
+
+      - name: Gradle编译1.20.1 Forge
+        run: |
+          chmod +x gradlew
+          ./gradlew :mod:1.20.1:forge-1.20.1:clean :mod:1.20.1:forge-1.20.1:build --no-daemon --no-parallel
+        env:
+          GRADLE_OPTS: "-Xmx4G"
+
+      # 终极修复：强行把 .so 塞进最终的 5MB 主 Jar 包中
+      - name: 强制将 .so 注入主 Jar 包
+        run: |
+          # 1. 精准找到最终的 5MB 主包（排除 slim 和 no-reobf）
+          MAIN_JAR=$(find mod/1.20.1/forge-1.20.1/build/libs -name "TouchController-*.jar" | grep -v "slim" | grep -v "no-reobf" | head -n 1)
+          echo "找到主 Jar 包: $MAIN_JAR"
+          
+          # 2. 建立临时注入目录并放入 .so
+          mkdir -p inject_dir/META-INF/native/android/aarch64-linux-android
+          cp mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android/libproxy_server_android.so inject_dir/META-INF/native/android/aarch64-linux-android/
+          
+          # 3. 使用 jar 命令强行更新到主包中
+          cd inject_dir
+          jar uf "../../$MAIN_JAR" META-INF/native/android/aarch64-linux-android/libproxy_server_android.so
+          
+          # 4. 校验是否注入成功（日志里必须看到这个文件）
+          echo "===== 校验注入结果 ====="
+          jar tf "../../$MAIN_JAR" | grep "libproxy_server_android.so"
+
+      - name: 输出jar产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: TouchController-output
+          path: mod/1.20.1/forge-1.20.1/build/libs/*.jar
