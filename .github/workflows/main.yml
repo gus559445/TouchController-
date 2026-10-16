@@ -17,8 +17,12 @@ jobs:
       - name: 解压 source.zip
         run: unzip source.zip
 
-      - name: 源码移动到根目录
-        run: mv ./*/!(.github) ./ 2>/dev/null || true
+      - name: 源码移到根目录
+        run: |
+          innerdir=$(unzip -qql source.zip | head -1 | awk '{print $4}' | cut -d/ -f1)
+          if [ -n "$innerdir" ] && [ -d "$innerdir" ];then
+            mv ./$innerdir/* ./
+          fi
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
