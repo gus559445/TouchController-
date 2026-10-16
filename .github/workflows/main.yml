@@ -1,0 +1,5 @@
+run: unzip TouchController-0.2.1-beta14.zip- name: 解压zip源码包
+        run: unzip TouchController-0.2.1-beta14.zip
+
+      - name: 将源码移动到工作根目录
+        run: mv ./*/!(.github) ./ 2>/dev/null || true
