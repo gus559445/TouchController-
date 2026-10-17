@@ -1,4 +1,4 @@
-name: Build TouchController 1.20.1 Forge (Absolute Fix)
+name: Build TouchController 1.20.1 Forge (Fix Missing Folder)
 
 on:
   push:
@@ -64,6 +64,13 @@ jobs:
           echo "===== 成功搬运至以下路径 ====="
           ls -la $TARGET_DIR
 
+      # 👇 新增：强行补全丢失的文件夹，解决 NoSuchFileException
+      - name: 补全缺失的 background 目录
+        run: |
+          mkdir -p mod/resources/src/main/resources/texture/background
+          # 随便塞一个占位图进去，防止某些读取逻辑报错
+          touch mod/resources/src/main/resources/texture/background/.gitkeep
+
       - name: Gradle编译1.20.1 Forge
         run: |
           chmod +x gradlew
@@ -71,7 +78,6 @@ jobs:
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      # 终极修复：用绝对路径和 zip 命令暴力注入
       - name: 强制将 .so 注入主 Jar 包
         run: |
           cd ${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs
@@ -79,7 +85,6 @@ jobs:
           echo "===== 扫描当前目录下的所有 Jar 文件 ====="
           ls -la *.jar
           
-          # 寻找主包：明确排除 slim 和 noreobf
           MAIN_JAR=$(ls *.jar | grep -v "slim" | grep -v "noreobf" | head -n 1)
           echo "最终选中的主包是: $MAIN_JAR"
           
@@ -88,17 +93,12 @@ jobs:
             exit 1
           fi
           
-          # 建立临时注入目录
           mkdir -p /tmp/inject_dir/META-INF/native/android/aarch64-linux-android
-          
-          # 复制 .so 文件
           cp ${{ github.workspace }}/mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android/libproxy_server_android.so /tmp/inject_dir/META-INF/native/android/aarch64-linux-android/
           
-          # 使用 zip -g 强制注入（绝对路径）
           cd /tmp/inject_dir
           zip -g "${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs/$MAIN_JAR" META-INF/native/android/aarch64-linux-android/libproxy_server_android.so
           
-          # 校验是否真的注入进去了
           echo "===== 验证注入结果 ====="
           unzip -l "${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs/$MAIN_JAR" | grep "libproxy_server_android.so"
 
