@@ -22,7 +22,7 @@ jobs:
             mv ./$innerdir/* ./
           fi
 
-      # 🚨 核心修复：安装 proxy-linux 和 proxy-windows 所需的 C++ 环境
+      # 安装 proxy-linux 和 proxy-windows 所需的 C++ 环境
       - name: 安装系统编译依赖 (搞定 Linux/Windows 模块)
         run: |
           sudo apt-get update
@@ -44,10 +44,11 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
+      # 🚨 核心修复：原版会强制编译全架构，这里必须把全架构的 Rust 目标都装上
       - name: Setup Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android
+          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
 
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
@@ -57,6 +58,7 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
+      # 保底操作：自己手动再编译一遍 arm64 塞进去（防止 Gradle 抽风没打包进去）
       - name: 编译 Rust 并搬运到正确路径
         run: |
           cd proxy-server-android
@@ -76,7 +78,7 @@ jobs:
           mkdir -p mod/resources/src/main/resources/texture/background
           cp mod/resources/src/main/resources/icon.png mod/resources/src/main/resources/texture/background/background.png
 
-      # 执行完整 build，不再只跑特定 task，让它把 linux/windows 也顺带过了
+      # 执行完整 build
       - name: Gradle编译 (完整构建)
         run: |
           chmod +x gradlew
@@ -84,6 +86,7 @@ jobs:
         env:
           GRADLE_OPTS: "-Xmx4G"
 
+      # 保底操作：强行把 .so 注入最终的主 Jar 包，确保绝对有触控
       - name: 强制将 .so 注入主 Jar 包
         run: |
           cd ${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs
