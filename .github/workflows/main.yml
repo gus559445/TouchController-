@@ -1,5 +1,4 @@
-name: Build TouchController Beta15 Full Build
-
+name: Build TouchController 0.2 Full Official Build (with Podman)
 on:
   push:
     branches: [ main ]
@@ -9,27 +8,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 仓库文件
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 解压 source.zip
+      - name: Unzip source.zip
         run: unzip source.zip
 
-      - name: 将源码移动到工作根目录
+      - name: Move source files to root
         run: |
           innerdir=$(unzip -qql source.zip | head -1 | awk '{print $4}' | cut -d/ -f1)
           if [ -n "$innerdir" ] && [ -d "$innerdir" ];then
             mv ./$innerdir/* ./
           fi
 
-      # 安装 proxy-linux 和 proxy-windows 所需的 C++ 环境
-      - name: 安装系统编译依赖 (搞定 Linux/Windows 模块)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake gcc-mingw-w64 g++-mingw-w64
-
-      - name: Setup JDK 21 Temurin
-        uses: actions/setup-java@v4
+      - name: Setup JDK21
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -44,75 +37,39 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
-      # 🚨 核心修复：原版会强制编译全架构，这里必须把全架构的 Rust 目标都装上
-      - name: Setup Rust stable
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android, i686-linux-android
 
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
 
-      - name: 生成local.properties
+      - name: Generate local.properties
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      # 保底操作：自己手动再编译一遍 arm64 塞进去（防止 Gradle 抽风没打包进去）
-      - name: 编译 Rust 并搬运到正确路径
+      # =====核心修复：手动启动podman socket，不使用systemctl --user=====
+      - name: Start rootless podman socket manually
         run: |
-          cd proxy-server-android
-          cargo clean
-          mkdir -p ./rust-temp-output
-          cargo ndk -t arm64-v8a -o ./rust-temp-output build --release
-          
-          TARGET_DIR="../mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android"
-          mkdir -p $TARGET_DIR
-          find ./rust-temp-output -name "*.so" -exec cp {} $TARGET_DIR/libproxy_server_android.so \;
-          echo "===== 成功搬运至以下路径 ====="
-          ls -la $TARGET_DIR
+          mkdir -p $XDG_RUNTIME_DIR/podman
+          podman system service --time=0 unix://$XDG_RUNTIME_DIR/podman/podman.sock &
+          sleep 10
+          export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
+          echo "DOCKER_HOST=$DOCKER_HOST" >> $GITHUB_ENV
 
-      # 修复原版源码 missing background 的 Bug
-      - name: 修复缺失的背景贴图 (解决 NullPointerException)
-        run: |
-          mkdir -p mod/resources/src/main/resources/texture/background
-          cp mod/resources/src/main/resources/icon.png mod/resources/src/main/resources/texture/background/background.png
-
-      # 执行完整 build
-      - name: Gradle编译 (完整构建)
+      - name: Official build command ./gradlew build
         run: |
           chmod +x gradlew
-          ./gradlew :mod:1.20.1:forge-1.20.1:clean :mod:1.20.1:forge-1.20.1:build --no-daemon --no-parallel
+          ./gradlew build --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      # 保底操作：强行把 .so 注入最终的主 Jar 包，确保绝对有触控
-      - name: 强制将 .so 注入主 Jar 包
-        run: |
-          cd ${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs
-          
-          echo "===== 扫描当前目录下的所有 Jar 文件 ====="
-          ls -la *.jar
-          
-          MAIN_JAR=$(ls *.jar | grep -v "slim" | grep -v "noreobf" | head -n 1)
-          echo "最终选中的主包是: $MAIN_JAR"
-          
-          if [ -z "$MAIN_JAR" ]; then
-            echo "错误: 没有找到主包！"
-            exit 1
-          fi
-          
-          mkdir -p /tmp/inject_dir/META-INF/native/android/aarch64-linux-android
-          cp ${{ github.workspace }}/mod/1.20.1/forge-1.20.1/src/main/resources/META-INF/native/android/aarch64-linux-android/libproxy_server_android.so /tmp/inject_dir/META-INF/native/android/aarch64-linux-android/
-          
-          cd /tmp/inject_dir
-          zip -g "${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs/$MAIN_JAR" META-INF/native/android/aarch64-linux-android/libproxy_server_android.so
-          
-          echo "===== 验证注入结果 ====="
-          unzip -l "${{ github.workspace }}/mod/1.20.1/forge-1.20.1/build/libs/$MAIN_JAR" | grep "libproxy_server_android.so"
-
-      - name: 输出jar产物
+      - name: Upload all artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: TouchController-output
-          path: mod/1.20.1/forge-1.20.1/build/libs/*.jar
+          name: TouchController-full-build-beta15
+          path: |
+            mod/1.20.1/forge-1.20.1/build/libs/*.jar
+            proxy-server-android/build/libs/*.so
