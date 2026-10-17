@@ -54,21 +54,14 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      - name: Gradle编译完整正式包(reobfJar)
+      - name: Gradle编译（自动跑jar+reobfJar，输出两个包）
         run: |
           chmod +x gradlew
           ./gradlew :mod:1.20.1:forge-1.20.1:reobfJar --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      - name: Gradle编译slim包(包含Android SO)
-        run: |
-          chmod +x gradlew
-          ./gradlew :mod:1.20.1:forge-1.20.1:jar --no-daemon --no-parallel
-        env:
-          GRADLE_OPTS: "-Xmx4G"
-
-      - name: 输出编译产物（reobf正式包 + slim包）
+      - name: 输出编译产物（正式包 + slim包）
         uses: actions/upload-artifact@v4
         with:
           name: TouchController-custom-1.20.1
