@@ -61,40 +61,14 @@ jobs:
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      - name: Gradle编译slim包(提取Android SO)
+      - name: Gradle编译slim包(包含Android SO)
         run: |
           chmod +x gradlew
           ./gradlew :mod:1.20.1:forge-1.20.1:jar --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      - name: 提取slim包中的Android SO，合并进正式包
-        run: |
-          # reobfJar生成正式包（不带slim）
-          FULL_JAR=$(find mod/1.20.1/forge-1.20.1/build/libs -name "TouchController-0.2.1-beta15+forge-1.20.1.jar")
-          # jar任务生成slim包
-          SLIM_JAR=$(find mod/1.20.1/forge-1.20.1/build/libs -name "TouchController-slim-0.2.1-beta15+forge-1.20.1.jar")
-          echo "正式包: $FULL_JAR"
-          echo "Slim包: $SLIM_JAR"
-
-          # 检查文件是否存在
-          if [ ! -f "$FULL_JAR" ];then echo "ERROR: FULL_JAR不存在";exit 1;fi
-          if [ ! -f "$SLIM_JAR" ];then echo "ERROR: SLIM_JAR不存在";exit 1;fi
-
-          # 解压slim包，只提取native目录
-          mkdir -p tmp_extract
-          cd tmp_extract
-          unzip -q ../$SLIM_JAR "META-INF/native/**"
-          # 把native目录追加进正式包
-          jar uf ../$FULL_JAR META-INF/native
-          cd ..
-          rm -rf tmp_extract
-
-          echo "合并完成，最终包: $FULL_JAR"
-          # 验证native是否真的打进去了
-          unzip -l $FULL_JAR | grep "META-INF/native" | head -10
-
-      - name: 输出最终jar产物
+      - name: 输出编译产物（reobf正式包 + slim包）
         uses: actions/upload-artifact@v4
         with:
           name: TouchController-custom-1.20.1
