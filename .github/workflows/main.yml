@@ -22,10 +22,10 @@ jobs:
             mv ./$innerdir/* ./
           fi
 
-      - name: Setup JDK 17 Temurin
+      - name: Setup JDK 21 Temurin
         uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Android SDK + NDK r25c
