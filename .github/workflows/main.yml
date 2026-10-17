@@ -54,12 +54,29 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
+      # ==========新增podman环境 + 构建本地镜像==========
+      - name: Install & Start Podman
+        run: |
+          sudo apt update
+          sudo apt install -y podman
+          systemctl --user enable --now podman.socket
+        env:
+          XDG_RUNTIME_DIR: /run/user/$UID
+
+      - name: Build localhost/touchcontroller-linux:latest image
+        run: |
+          podman build -t localhost/touchcontroller-linux:latest ./proxy-linux
+        env:
+          DOCKER_HOST: unix://$XDG_RUNTIME_DIR/podman/podman.sock
+
       - name: Gradle编译完整正式包(reobfJar)
         run: |
           chmod +x gradlew
           ./gradlew :mod:1.20.1:forge-1.20.1:reobfJar --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
+          # 传递podman socket给gradle进程
+          DOCKER_HOST: unix://$XDG_RUNTIME_DIR/podman/podman.sock
 
       - name: Gradle编译slim包(提取Android SO)
         run: |
@@ -67,6 +84,7 @@ jobs:
           ./gradlew :mod:1.20.1:forge-1.20.1:jar --no-daemon --no-parallel
         env:
           GRADLE_OPTS: "-Xmx4G"
+          DOCKER_HOST: unix://$XDG_RUNTIME_DIR/podman/podman.sock
 
       - name: 提取slim包中的Android SO，合并进正式包
         run: |
