@@ -22,7 +22,7 @@ jobs:
             mv ./$innerdir/* ./
           fi
 
-      # 1. 解决 proxy-linux 等桌面模块的交叉编译报错
+      # ---------- 交叉编译环境（原有逻辑保留）----------
       - name: 安装系统编译依赖 (搞定 Linux/Windows 模块)
         run: |
           sudo apt-get update
@@ -44,7 +44,6 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
-      # 2. 解决 Gradle 默认编译全架构导致 Rust 找不到 target 的报错
       - name: Setup Rust stable (All targets)
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -58,13 +57,12 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      # 3. 解决原版源码 zip 包里漏掉的一张背景图导致的 NullPointerException
       - name: 修复缺失的背景贴图
         run: |
           mkdir -p mod/resources/src/main/resources/texture/background
           cp mod/resources/src/main/resources/icon.png mod/resources/src/main/resources/texture/background/background.png
 
-      # 4. 原汁原味的构建，全自动打包 .so 进根目录
+      # ---------- Gradle 构建（保持原样）----------
       - name: Gradle编译
         run: |
           chmod +x gradlew
@@ -72,8 +70,25 @@ jobs:
         env:
           GRADLE_OPTS: "-Xmx4G"
 
+      # ★ 新增：方案 A —— 把 14 个 native 库补进主 jar（幂等，缺哪补哪）
+      - name: Merge native libs into jar
+        run: |
+          chmod +x merge_natives.sh
+          found=0
+          for jar in mod/1.20.1/forge-1.20.1/build/libs/TouchController-*.jar; do
+            case "$(basename "$jar")" in
+              *-slim-*|*-noreobf-*|*-fat-*) continue ;;
+            esac
+            found=1
+            echo "== 补库: $jar"
+            bash merge_natives.sh "$jar" natives
+            n=$(unzip -l "$jar" | grep -cE '\.so$|\.dll$')
+            [ "$n" -eq 14 ] || { echo "错误: $jar 里库数量是 $n"; exit 1; }
+          done
+          [ "$found" -eq 1 ] || { echo "错误: 没找到主 jar"; exit 1; }
+
       - name: 输出jar产物
         uses: actions/upload-artifact@v4
         with:
           name: TouchController-Beta14-Output
-          path: mod/1.20.1/forge-1.20.1/build/libs/*.jar
+          path: mod/1.20.1/forge-1.20.1/build/libs/*
