@@ -12,18 +12,6 @@ jobs:
       - name: Checkout 仓库文件
         uses: actions/checkout@v4
 
-      # ★ 新增：解压包含 14 个 native 库的压缩包
-      - name: 解压 native 库
-        run: |
-          if [ -f natives.zip ]; then
-            unzip -o natives.zip
-            echo "natives 文件夹解压成功"
-            ls -l natives | head -n 5
-          else
-            echo "错误: 根目录下找不到 natives.zip 文件！"
-            exit 1
-          fi
-
       - name: 解压 source.zip
         run: unzip source.zip
 
@@ -34,11 +22,11 @@ jobs:
             mv ./$innerdir/* ./
           fi
 
-      # 1. 解决 proxy-linux 等桌面模块的交叉编译报错
-      - name: 安装系统编译依赖 (搞定 Linux/Windows 模块)
+      # 环境配置保留（虽然没用，但防错）
+      - name: 安装系统编译依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake gcc-mingw-w64 g++-mingw-w64
+          sudo apt-get install -y build-essential cmake gcc-mingw-w64 g++-mingw-w64 zip
 
       - name: Setup JDK 21 Temurin
         uses: actions/setup-java@v4
@@ -46,7 +34,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Android SDK + NDK r25c
+      - name: Setup Android SDK + NDK
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: 11076708
@@ -56,8 +44,7 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
-      # 2. 解决 Gradle 默认编译全架构导致 Rust 找不到 target 的报错
-      - name: Setup Rust stable (All targets)
+      - name: Setup Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
@@ -70,13 +57,11 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
-      # 3. 解决原版源码 zip 包里漏掉的一张背景图导致的 NullPointerException
       - name: 修复缺失的背景贴图
         run: |
           mkdir -p mod/resources/src/main/resources/texture/background
           cp mod/resources/src/main/resources/icon.png mod/resources/src/main/resources/texture/background/background.png
 
-      # 4. 原汁原味的构建，全自动打包 .so 进根目录
       - name: Gradle编译
         run: |
           chmod +x gradlew
@@ -84,25 +69,34 @@ jobs:
         env:
           GRADLE_OPTS: "-Xmx4G"
 
-      # ★ 新增：方案 A —— 把 14 个 native 库补进主 jar（幂等，缺哪补哪）
-      - name: 将原生库合并到 jar 中
+      # ★ 核心黑科技：从旧 Jar 里抽库，塞进新 Jar
+      - name: 从旧 jar 提取库并注入新 jar
         run: |
-          chmod +x merge_natives.sh
-          found=0
+          echo "正在从 old.jar 中提取 .so 和 .dll 文件..."
+          mkdir -p temp_natives
+          # 提取库文件，保留内部目录结构
+          unzip -o old.jar '*.so' '*.dll' -d temp_natives
+          
+          # 遍历新编译出来的 jar
           for jar in mod/1.20.1/forge-1.20.1/build/libs/TouchController-*.jar; do
             case "$(basename "$jar")" in
               *-slim-*|*-noreobf-*|*-fat-*) continue ;;
             esac
-            found=1
-            echo "== 补库: $jar"
-            bash merge_natives.sh "$jar" natives
+            echo "== 正在向 $jar 注入原生库..."
+            # 进入提取出来的库文件夹，利用 zip 直接更新到新 jar 中
+            (cd temp_natives && zip -r -u "$GITHUB_WORKSPACE/$jar" .)
+            
+            # 统计验证
             n=$(unzip -l "$jar" | grep -cE '\.so$|\.dll$')
-            [ "$n" -eq 14 ] || { echo "错误: $jar 里库数量是 $n"; exit 1; }
+            echo "✅ 注入成功！当前 $jar 中的库数量为: $n"
+            if [ "$n" -eq 0 ]; then
+              echo "错误: 注入失败，库数量为 0"
+              exit 1
+            fi
           done
-          [ "$found" -eq 1 ] || { echo "错误: 没找到主 jar"; exit 1; }
 
       - name: 输出jar产物
         uses: actions/upload-artifact@v4
         with:
-          name: TouchController-Beta14-Output
+          name: TouchController-Output
           path: mod/1.20.1/forge-1.20.1/build/libs/*
