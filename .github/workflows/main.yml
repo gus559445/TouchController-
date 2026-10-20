@@ -12,6 +12,18 @@ jobs:
       - name: Checkout 仓库文件
         uses: actions/checkout@v4
 
+      # ★ 新增：解压包含 14 个 native 库的压缩包
+      - name: 解压 native 库
+        run: |
+          if [ -f natives.zip ]; then
+            unzip -o natives.zip
+            echo "natives 文件夹解压成功"
+            ls -l natives | head -n 5
+          else
+            echo "错误: 根目录下找不到 natives.zip 文件！"
+            exit 1
+          fi
+
       - name: 解压 source.zip
         run: unzip source.zip
 
@@ -22,7 +34,7 @@ jobs:
             mv ./$innerdir/* ./
           fi
 
-      # ---------- 交叉编译环境（原有逻辑保留）----------
+      # 1. 解决 proxy-linux 等桌面模块的交叉编译报错
       - name: 安装系统编译依赖 (搞定 Linux/Windows 模块)
         run: |
           sudo apt-get update
@@ -44,6 +56,7 @@ jobs:
             ndk;25.2.9519653
             cmake;3.22.1
 
+      # 2. 解决 Gradle 默认编译全架构导致 Rust 找不到 target 的报错
       - name: Setup Rust stable (All targets)
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -57,12 +70,13 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "ndk.dir=$ANDROID_HOME/ndk/25.2.9519653" >> local.properties
 
+      # 3. 解决原版源码 zip 包里漏掉的一张背景图导致的 NullPointerException
       - name: 修复缺失的背景贴图
         run: |
           mkdir -p mod/resources/src/main/resources/texture/background
           cp mod/resources/src/main/resources/icon.png mod/resources/src/main/resources/texture/background/background.png
 
-      # ---------- Gradle 构建（保持原样）----------
+      # 4. 原汁原味的构建，全自动打包 .so 进根目录
       - name: Gradle编译
         run: |
           chmod +x gradlew
@@ -71,7 +85,7 @@ jobs:
           GRADLE_OPTS: "-Xmx4G"
 
       # ★ 新增：方案 A —— 把 14 个 native 库补进主 jar（幂等，缺哪补哪）
-      - name: Merge native libs into jar
+      - name: 将原生库合并到 jar 中
         run: |
           chmod +x merge_natives.sh
           found=0
