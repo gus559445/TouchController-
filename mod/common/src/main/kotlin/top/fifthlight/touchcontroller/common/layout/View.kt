@@ -170,7 +170,9 @@ fun Context.View() {
                                             // 手上拿着清单点名的「右键道具」（戎卫号角、驭兽哨、末影珍珠、药水…）：
                                             // 点生物这一下是「用」而不是「打」。走原版右键队列，
                                             // 让物品自己的 interactLivingEntity / use 生效。
-                                            useKeyState.click()
+                                            TweakAction.provider.performUseClick(
+                                                reachAround = config.tweaks.reachAround
+                                            )
                                         } else {
                                             // Short click on entity: attack the entity
                                             attackKeyState.click()
@@ -392,7 +394,10 @@ fun Context.View() {
             val entityUseInstead = crosshairTarget == CrosshairTarget.ENTITY &&
                 !(itemUsable && TweakState.provider.isLongPressUsableItem())
             viewState = if (entityUseInstead) {
-                useKeyState.click()
+                // 直接代执行一次「对生物右键」：走 gameMode.interactAt / interact，
+                // 不依赖原版按键队列，物品的 interactLivingEntity（驯服 / 喂食 / 戎卫号角等）
+                // 一定会被调用到。
+                TweakAction.provider.performUseClick(reachAround = config.tweaks.reachAround)
                 PointerState.View.ViewPointerState.CONSUMED
             } else if (itemUsable) {
                 // 长按方块时，手里拿的是食物或蓄力武器：先替原版开始吃/拉弓。
