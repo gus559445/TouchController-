@@ -164,15 +164,6 @@ fun Context.View() {
                                             // 举盾时点生物：同样会被原版丢掉，所以先收盾、再自己打这一下。
                                             SneakShieldHandler.release(keyBindingHandler)
                                             TweakAction.provider.performAttackClick()
-                                        } else if (TweakState.provider.isHeldItemInWhitelist(config.item.usableItems) ||
-                                            TweakState.provider.isHeldFoodItem()
-                                        ) {
-                                            // 手上拿着清单点名的「右键道具」（戎卫号角、驭兽哨、末影珍珠、药水…）：
-                                            // 点生物这一下是「用」而不是「打」。走原版右键队列，
-                                            // 让物品自己的 interactLivingEntity / use 生效。
-                                            TweakAction.provider.performUseClick(
-                                                reachAround = config.tweaks.reachAround
-                                            )
                                         } else {
                                             // Short click on entity: attack the entity
                                             attackKeyState.click()
@@ -446,8 +437,10 @@ fun Context.View() {
                     }
 
                     CrosshairTarget.ENTITY -> {
-                        // Trigger item use once and consume
-                        useKeyState.click()
+                        // 长按生物、手上东西又谈不上「蓄力/进食」：代执行一次对生物右键。
+                        // 交互成功就是喂食/驯服，失败会继续 useItem（自己吃），
+                        // 这和用户定的规则一致：可交互的优先交互，不可交互的优先吃。
+                        TweakAction.provider.performUseClick(reachAround = config.tweaks.reachAround)
                         PointerState.View.ViewPointerState.CONSUMED
                     }
 

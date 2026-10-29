@@ -365,10 +365,6 @@ public final class TweakUseExecutor {
                     }
                     return;
                 }
-                // 生物交互没成（拿着僵尸不吃的食物、空手等）：到此为止。
-                // 不 return 的话会继续往下走到 useItem —— 那一下就把食物塞自己嘴里了，
-                // 表现就是「对着生物点一下，结果自己吃了一口」。
-                return;
             } else if (blockTapped) {
                 BlockHitResult blockHit = (BlockHitResult) hit;
                 InteractionResult result = minecraft.gameMode.useItemOn(player, hand, blockHit);
