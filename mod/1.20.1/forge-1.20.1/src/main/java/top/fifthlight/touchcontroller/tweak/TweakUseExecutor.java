@@ -325,7 +325,13 @@ public final class TweakUseExecutor {
     }
 
     private static void performUseInternal(Minecraft minecraft, LocalPlayer player, boolean reachAround) {
-        HitResult hit = TargetLock.INSTANCE.effectiveHit();
+        // 对着生物时一律用**实时**准星：瞄准锁可能还停在上一只生物（甚至一块方块）上，
+        // 用锁定的旧 hit 去打，interactLivingEntity（金羹驯服、戎卫号角…）就落在了错误的目标上，
+        // 表现就是「长按不能驯服，点一下才行」。
+        HitResult liveHit = minecraft.hitResult;
+        HitResult hit = (liveHit != null && liveHit.getType() == HitResult.Type.ENTITY)
+                ? liveHit
+                : TargetLock.INSTANCE.effectiveHit();
         final boolean blockTapped = hit != null && hit.getType() == HitResult.Type.BLOCK;
         // 准星对着空气时，先试四周放置：脚下前方那一格。
         // 必须排在两只手的常规使用之前：盾在主手时，常规流程里的 useItem 会立刻把盾重新举起来
