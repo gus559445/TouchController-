@@ -366,7 +366,12 @@ fun Context.View() {
                         (!holdShield && TweakState.provider.canUseHeldItemNow())))
 
         // If pointer kept still and held for hold-detecting ticks in config
-        if (viewState == PointerState.View.ViewPointerState.INITIAL && pressTime >= config.control.viewHoldDetectTicks && !moving) {
+        // 对着生物时放宽长按判定：手指几乎不可能完全不动（触控视角总会轻微飘），
+        // 而「点一下 = 攻击 / 按住 = 喂食驯服」这个区分全看时间，跟有没有微动无关。
+        // 不放宽的话对着生物按住也会被判成短按，结果一驯服就变成打了一拳。
+        val longPressReached = pressTime >= config.control.viewHoldDetectTicks &&
+            (!moving || crosshairTarget == CrosshairTarget.ENTITY)
+        if (viewState == PointerState.View.ViewPointerState.INITIAL && longPressReached) {
             // 潜行举盾期间这一下要真正动手（挖方块 / 吃东西 / 用物品）：先收盾让路，
             // 再照常执行。动作结束后 SneakShieldHandler 会自动重新举盾，格挡不会丢。
             // 只是按着转视角（对着空气 / 生物又没东西可用）时不动盾，免得盾一按一抖。
