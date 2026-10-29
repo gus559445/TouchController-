@@ -38,7 +38,7 @@ import top.fifthlight.touchcontroller.common.config.preset.LayoutPreset
 import top.fifthlight.touchcontroller.common.gal.EntityListProvider
 import top.fifthlight.touchcontroller.common.ui.component.*
 import top.fifthlight.touchcontroller.common.ui.model.LayerEditorScreenModel
-import top.fifthlight.touchcontroller.common.ui.screen.itemlist.ItemListChooseScreen
+import top.fifthlight.touchcontroller.common.ui.screen.itemlist.DefaultItemListScreen
 import top.fifthlight.touchcontroller.common.ui.tab.layercondition.LayerConditionTabContext
 import top.fifthlight.touchcontroller.common.ui.tab.layercondition.LocalLayerConditionTabContext
 import top.fifthlight.touchcontroller.common.ui.tab.layercondition.allLayerConditionTabs
@@ -173,13 +173,17 @@ private fun LayerConditionItem(
                         } + listOf(
                             Pair(Text.literal("穿戴指定装备…")) {
                                 // 直接打开物品列表挑，不用手输 ID
+                                // 直接打开「全部物品」列表（跳过中间那层“默认物品表 / 背包”的选择），
+                                // 选完立刻退回条件界面。
                                 navigator?.push(
-                                    ItemListChooseScreen { item ->
+                                    DefaultItemListScreen { item ->
                                         onKeyChanged(
                                             targetedCondition.copy(
                                                 state = TargetedEntityConditions.armorOf(item.id.toString())
                                             )
                                         )
+                                        navigator?.pop()
+                                        Unit
                                     }
                                 )
                                 // lambda 必须显式返回 Unit：push 的返回值是 Unit?，会让整个 lambda 推断成 () -> Unit?
