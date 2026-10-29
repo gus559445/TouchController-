@@ -182,6 +182,8 @@ private fun LayerConditionItem(
                                         )
                                     }
                                 )
+                                // lambda 必须显式返回 Unit：push 的返回值是 Unit?，会让整个 lambda 推断成 () -> Unit?
+                                Unit
                             }
                         )
                         ).toPersistentList(),
