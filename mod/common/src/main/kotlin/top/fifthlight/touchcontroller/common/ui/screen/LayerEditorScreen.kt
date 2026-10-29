@@ -38,6 +38,7 @@ import top.fifthlight.touchcontroller.common.config.preset.LayoutPreset
 import top.fifthlight.touchcontroller.common.gal.EntityListProvider
 import top.fifthlight.touchcontroller.common.ui.component.*
 import top.fifthlight.touchcontroller.common.ui.model.LayerEditorScreenModel
+import top.fifthlight.touchcontroller.common.ui.screen.itemlist.ItemListChooseScreen
 import top.fifthlight.touchcontroller.common.ui.tab.layercondition.LayerConditionTabContext
 import top.fifthlight.touchcontroller.common.ui.tab.layercondition.LocalLayerConditionTabContext
 import top.fifthlight.touchcontroller.common.ui.tab.layercondition.allLayerConditionTabs
@@ -148,8 +149,7 @@ private fun LayerConditionItem(
                     .firstOrNull { it.stateKey == stateKey }?.stateLabel ?: stateKey
             }
         }
-        // 输入物品 ID 的小编辑器：下拉里选「穿戴指定装备」时展开
-        var armorEditing by remember(targetedCondition.entity) { mutableStateOf<String?>(null) }
+        val navigator = LocalNavigator.current
         var stateExpanded by remember(targetedCondition.entity) { mutableStateOf(false) }
         val availableStates = remember(targetedCondition.entity, stateExpanded) {
             if (stateExpanded) entityListProvider.getAvailableStates(targetedCondition.entity) else emptyList()
@@ -159,58 +159,37 @@ private fun LayerConditionItem(
                 availableStates.map { entry ->
                     Text.literal(entry.stateLabel ?: entry.stateKey.orEmpty()) to entry.stateKey
                 }
-        val editingArmor = armorEditing
-        if (editingArmor != null) {
-            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                EditText(
-                    modifier = Modifier.weight(1f),
-                    value = editingArmor,
-                    onValueChanged = { armorEditing = it },
-                    placeholder = Text.literal("物品 ID，例如 minecraft:diamond_helmet"),
+        Select(
+            modifier = Modifier.fillMaxWidth(),
+            expanded = stateExpanded,
+            onExpandedChanged = { stateExpanded = it },
+            dropDownContent = {
+                DropdownItemList(
+                    modifier = Modifier.verticalScroll(),
+                    onItemSelected = { stateExpanded = false },
+                    items = (
+                        stateOptions.map { (label, stateKey) ->
+                            Pair(label) { onKeyChanged(targetedCondition.copy(state = stateKey)) }
+                        } + listOf(
+                            Pair(Text.literal("穿戴指定装备…")) {
+                                // 直接打开物品列表挑，不用手输 ID
+                                navigator?.push(
+                                    ItemListChooseScreen { item ->
+                                        onKeyChanged(
+                                            targetedCondition.copy(
+                                                state = TargetedEntityConditions.armorOf(item.id.toString())
+                                            )
+                                        )
+                                    }
+                                )
+                            }
+                        )
+                        ).toPersistentList(),
                 )
-                Button(
-                    modifier = Modifier.fillMaxHeight(),
-                    onClick = {
-                        val id = editingArmor.trim()
-                        if (id.isNotEmpty()) {
-                            onKeyChanged(
-                                targetedCondition.copy(state = TargetedEntityConditions.armorOf(id))
-                            )
-                        }
-                        armorEditing = null
-                    }
-                ) {
-                    Text(Text.literal("确定"))
-                }
             }
-        } else {
-            Select(
-                modifier = Modifier.fillMaxWidth(),
-                expanded = stateExpanded,
-                onExpandedChanged = { stateExpanded = it },
-                dropDownContent = {
-                    DropdownItemList(
-                        modifier = Modifier.verticalScroll(),
-                        onItemSelected = { stateExpanded = false },
-                        items = (
-                            stateOptions.map { (label, stateKey) ->
-                                Pair(label) { onKeyChanged(targetedCondition.copy(state = stateKey)) }
-                            } + listOf(
-                                Pair(Text.literal("穿戴指定装备…")) {
-                                    armorEditing =
-                                        targetedCondition.state
-                                            ?.takeIf { it.startsWith(TargetedEntityConditions.ARMOR_PREFIX) }
-                                            ?.removePrefix(TargetedEntityConditions.ARMOR_PREFIX)
-                                            ?: ""
-                                }
-                            )
-                            ).toPersistentList(),
-                    )
-                }
-            ) {
-                Text(Text.literal("状态: " + (stateLabel ?: "任意")))
-                SelectIcon(expanded = stateExpanded)
-            }
+        ) {
+            Text(Text.literal("状态: " + (stateLabel ?: "任意")))
+            SelectIcon(expanded = stateExpanded)
         }
     }
     }
