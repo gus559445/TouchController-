@@ -1,6 +1,7 @@
 package top.fifthlight.touchcontroller.common_1_20_1.gal
 
 import kotlinx.collections.immutable.toPersistentList
+import org.koin.core.component.inject
 import net.minecraft.client.Minecraft
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.world.InteractionHand
@@ -141,7 +142,7 @@ internal object TargetLock {
 
 class PlayerHandleImpl(inner: LocalPlayer) : AbstractPlayerHandleImpl(inner), org.koin.core.component.KoinComponent {
     /** 触控圈的状态（有没有画在屏幕上）。锁只能由「触控圈真的指着实体」建立。 */
-    private val controllerHudModel: top.fifthlight.touchcontroller.common.model.ControllerHudModel by org.koin.core.component.inject()
+    private val controllerHudModel: top.fifthlight.touchcontroller.common.model.ControllerHudModel by inject()
 
     override fun hasItemsOnHand(list: ItemList): Boolean = InteractionHand.entries.any { hand ->
         inner.getItemInHand(hand).toCombine().item in list
