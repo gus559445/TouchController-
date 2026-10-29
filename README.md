@@ -15,11 +15,11 @@ Currently in early development, welcome to report for bugs or other problems you
 
 ## 本分支说明 / About this branch
 
-This branch (`1.20.1-Forge`) is a personal fork focused on **touch-screen playability** —
+This is a personal fork for **1.20.1 Forge**, focused on touch-screen playability —
 making the phone experience match Bedrock Edition. Everything below is client-side only;
 no server-side logic and no extra network packets.
 
-这个分支（`1.20.1-Forge`）是个人分支，只做一件事：**把手机的触控手感调到和基岩版一致**。
+这是 **1.20.1 Forge** 的个人分支，只做一件事：把手机的触控手感调到和基岩版一致。
 下面所有改动都是**纯客户端**的，不涉及服务端逻辑，也没有新增任何网络包。
 
 ### 触控交互
