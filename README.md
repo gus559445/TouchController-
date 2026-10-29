@@ -13,6 +13,48 @@ Currently in early development, welcome to report for bugs or other problems you
 [![CI](https://github.com/TouchController/TouchController/actions/workflows/build.yml/badge.svg)](https://github.com/TouchController/TouchController/actions) [![Modrinth](https://img.shields.io/modrinth/dt/touchcontroller?style=&logo=modrinth&color=008833)](https://modrinth.com/mod/touchcontroller) [![Issues](https://img.shields.io/github/issues/TouchController/TouchController?style=logo=github-square&color=F7E672)](https://github.com/TouchController/TouchController/issues) [![TC WIKI](https://img.shields.io/static/v1?label=TC%20WIKI&message=Online&color=F08B95)](https://wiki.touchcontroller.fifthlight.top/) [![MC 百科](https://img.shields.io/badge/MC_%E7%99%BE%E7%A7%91-blue?style=&color=ae94ff)](https://www.mcmod.cn/class/17432.html)
 </div>
 
+## 本分支说明 / About this branch
+
+This branch (`1.20.1-Forge`) is a personal fork focused on **touch-screen playability** —
+making the phone experience match Bedrock Edition. Everything below is client-side only;
+no server-side logic and no extra network packets.
+
+这个分支（`1.20.1-Forge`）是个人分支，只做一件事：**把手机的触控手感调到和基岩版一致**。
+下面所有改动都是**纯客户端**的，不涉及服务端逻辑，也没有新增任何网络包。
+
+### 触控交互
+
+- **长按方块时的进食 / 蓄力**：手拿食物或蓄力武器（弓、月光蠕虫女王等）长按方块，会优先进食或拉弓，不再被方块交互抢走。
+- **长按可交互方块不误触**：对着箱子、工作台、熔炉等长按，不会再顺手打开它们；想开箱子仍然是「轻点一下」。
+- **投掷物长按连续投掷**：雪球、鸡蛋、附魔瓶、末影珍珠这类点一下就生效的物品，按住可以连续投掷，而且不会被改判成挖方块（创造模式尤其明显）。
+- **对着生物长按**：优先发「对生物右键」，走物品自己的 `interactLivingEntity`（驯服、喂食、戎卫号角 / 驭兽哨 / 金羹这类道具）。真正的蓄力武器（弓、月光蠕虫女王）对着生物长按仍然是按住蓄力。
+- **饱了也能吃的食物**：附魔金苹果这类对准方块长按可以一口接一口吃到底。
+- **清单里的右键道具**：手持「可长按使用的物品」白名单里点名的道具时，点生物这一下改发右键使用，而不是攻击。
+
+### 瞄准指定实体（图层条件）
+
+- **实体列表一个类型一条**，不再把狼的坐/站、羊的 16 种颜色摊成几十条。
+- 状态改在「已添加的条件」上用**状态选择器**挑，点开时给出该实体的全部候选状态（含 `幼年 · 驯服·站着` 这类组合），主界面配置预设时同样可用。
+- **背对目标时图层消失**：视线偏离目标超过 60° 就自动关闭图层；转回来自动恢复，不用重新瞄准。
+- **锁定距离上限 6 格**；松手后保持锁定，直到目标离开原位、死亡或超距。
+
+### 盾牌
+
+- 「潜行自动举盾」「举盾弹开攻击者」「举盾时移动不减速叠加」三个开关统一搬到 **设置 → 物品 → 盾牌**。
+- 新增**自定义盾牌白名单**：名单内的物品一律按盾牌处理（潜行时自动举起）。
+- **举盾与右键彻底分离**：右键永远不会举盾，举盾只由潜行状态机接管。
+- 修复：以前把所有「使用动画是格挡」的物品都当成盾牌，导致孔雀羽扇这类右键道具被直接吞掉、完全没反应。
+
+### 兼容与物品清单
+
+- 默认「可长按使用的物品」加入 mob_controller 的 **驭兽哨 / 特制驭兽哨 / 戎卫号角**（软依赖，未安装时自动跳过）。
+- 修复：只有真正带蓄力时长（`useDuration > 0`）的物品才走「长按蓄力」分支，点一下就生效的道具恢复原版行为。
+
+### 其它
+
+- 交互距离与基岩版一致：方块与实体都是 **6 格**（创造模式 12 格）。
+- TC-Curios 反射读取饰品时的失败不再刷日志。
+
 ## Download and install
 
 You can download the latest release of TouchController mod
