@@ -1,0 +1,117 @@
+package top.fifthlight.touchcontroller.common.ui.tab.general
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import top.fifthlight.combine.data.Text
+import top.fifthlight.combine.layout.Arrangement
+import top.fifthlight.combine.modifier.Modifier
+import top.fifthlight.combine.modifier.placement.fillMaxSize
+import top.fifthlight.combine.modifier.placement.padding
+import top.fifthlight.combine.modifier.scroll.verticalScroll
+import top.fifthlight.combine.widget.base.layout.Column
+import top.fifthlight.touchcontroller.assets.BackgroundTextures
+import top.fifthlight.touchcontroller.assets.Texts
+import top.fifthlight.touchcontroller.common.config.RegularConfig
+import top.fifthlight.touchcontroller.common.config.TweaksConfig
+import top.fifthlight.touchcontroller.common.ui.component.SwitchPreferenceItem
+import top.fifthlight.touchcontroller.common.ui.model.LocalConfigScreenModel
+import top.fifthlight.touchcontroller.common.ui.tab.Tab
+import top.fifthlight.touchcontroller.common.ui.tab.TabGroup
+import top.fifthlight.touchcontroller.common.ui.tab.TabOptions
+
+object RegularTab : Tab() {
+    override val options = TabOptions(
+        titleId = Texts.SCREEN_CONFIG_GENERAL_REGULAR_TITLE,
+        group = TabGroup.GeneralGroup,
+        index = 0,
+        onReset = { copy(regular = RegularConfig(), tweaks = TweaksConfig()) },
+    )
+
+    @Composable
+    override fun Content() {
+        val screenModel = LocalConfigScreenModel.current
+        Column(
+            modifier = Modifier
+                .padding(8)
+                .verticalScroll(background = BackgroundTextures.BRICK_BACKGROUND)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8),
+        ) {
+            val uiState by screenModel.uiState.collectAsState()
+            val globalConfig = uiState.config
+            fun update(editor: RegularConfig.() -> RegularConfig) {
+                screenModel.updateConfig { copy(regular = editor(regular)) }
+            }
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_DISABLE_MOUSE_MOVE_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_DISABLE_MOUSE_MOVE_DESCRIPTION),
+                value = globalConfig.regular.disableMouseMove,
+                onValueChanged = { update { copy(disableMouseMove = it) } }
+            )
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_DISABLE_MOUSE_CLICK_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_DISABLE_MOUSE_CLICK_DESCRIPTION),
+                value = globalConfig.regular.disableMouseClick,
+                onValueChanged = { update { copy(disableMouseClick = it) } }
+            )
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_DISABLE_CURSOR_LOCK_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_DISABLE_CURSOR_LOCK_DESCRIPTION),
+                value = globalConfig.regular.disableMouseLock,
+                onValueChanged = { update { copy(disableMouseLock = it) } }
+            )
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_DISABLE_HOT_BAR_KEY_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_DISABLE_HOT_BAR_KEY_DESCRIPTION),
+                value = globalConfig.regular.disableHotBarKey,
+                onValueChanged = { update { copy(disableHotBarKey = it) } }
+            )
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_VIBRATION_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_VIBRATION_DESCRIPTION),
+                value = globalConfig.regular.vibration,
+                onValueChanged = { update { copy(vibration = it) } }
+            )
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_QUICK_HAND_SWAP_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_QUICK_HAND_SWAP_DESCRIPTION),
+                value = globalConfig.regular.quickHandSwap,
+                onValueChanged = { update { copy(quickHandSwap = it) } }
+            )
+            // 增强功能：两件原本要另装模组的小事，现在直接在触控设置里开关。
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_CHARGE_CROSSHAIR_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_CHARGE_CROSSHAIR_DESCRIPTION),
+                value = globalConfig.tweaks.chargeCrosshair,
+                onValueChanged = { value ->
+                    screenModel.updateConfig { copy(tweaks = tweaks.copy(chargeCrosshair = value)) }
+                }
+            )
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_REACH_AROUND_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_REACH_AROUND_DESCRIPTION),
+                value = globalConfig.tweaks.reachAround,
+                onValueChanged = { value ->
+                    screenModel.updateConfig { copy(tweaks = tweaks.copy(reachAround = value)) }
+                }
+            )
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_EXTRA_REACH_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_EXTRA_REACH_DESCRIPTION),
+                value = globalConfig.tweaks.extraReach,
+                onValueChanged = { value ->
+                    screenModel.updateConfig { copy(tweaks = tweaks.copy(extraReach = value)) }
+                }
+            )
+            SwitchPreferenceItem(
+                title = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_CROSSBOW_OFFHAND_RENDER_TITLE),
+                description = Text.translatable(Texts.SCREEN_CONFIG_GENERAL_REGULAR_CROSSBOW_OFFHAND_RENDER_DESCRIPTION),
+                value = globalConfig.tweaks.crossbowOffhandRender,
+                onValueChanged = { value ->
+                    screenModel.updateConfig { copy(tweaks = tweaks.copy(crossbowOffhandRender = value)) }
+                }
+            )
+        }
+    }
+}
