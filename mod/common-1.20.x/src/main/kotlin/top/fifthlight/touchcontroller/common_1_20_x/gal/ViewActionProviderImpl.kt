@@ -23,6 +23,9 @@ object ViewActionProviderImpl : ViewActionProvider {
         }
     }
 
+    /** 实时准星指着的实体 UUID（不看瞄准锁）。 */
+    override fun getCrosshairEntityUuid(): java.util.UUID? = client.crosshairPickEntity?.uuid
+
     /** 准星指着的方块有没有方块实体（箱子/工作台/熔炉…＝可交互）。 */
     override fun isTargetBlockInteractive(): Boolean {
         val blockHit = client.hitResult as? net.minecraft.world.phys.BlockHitResult ?: return false

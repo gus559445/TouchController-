@@ -41,6 +41,9 @@ private var clickOnlyUse = false
  */
 private var pressCrosshair: CrosshairTarget? = null
 
+/** 按下那一刻准星指着的实体（UUID）。按住转视角扫到别的生物就不算这一下长按。 */
+private var pressEntityUuid: java.util.UUID? = null
+
 /**
  * 这一段「按住使用」是不是真的开始用过。
  *
@@ -387,8 +390,10 @@ fun Context.View() {
         // 不放宽的话对着生物按住也会被判成短按，结果一驯服就变成打了一拳。
         val longPressReached = pressTime >= config.control.viewHoldDetectTicks &&
             !moving &&
-            // 按下时对着什么，现在就还得对着什么：中途扫到别的目标不算这一下的长按动作。
-            crosshairTarget == pressCrosshair
+            // 按下时对着什么，现在就还得对着什么：中途扫到别的目标（哪怕同样是生物）
+            // 都不算这一下的长按动作，否则按住转视角扫过村民 / 马 / 已驯服生物就会误触发交互。
+            crosshairTarget == pressCrosshair &&
+            viewActionProvider.getCrosshairEntityUuid() == pressEntityUuid
         if (viewState == PointerState.View.ViewPointerState.INITIAL && longPressReached) {
             // 潜行举盾期间这一下要真正动手（挖方块 / 吃东西 / 用物品）：先收盾让路，
             // 再照常执行。动作结束后 SneakShieldHandler 会自动重新举盾，格挡不会丢。
@@ -511,6 +516,7 @@ fun Context.View() {
                         // 否则原版射线一直返回旧目标，永远换不到新的。
                         CrosshairLock.clearLock()
                         pressCrosshair = viewActionProvider.getCrosshairTarget()
+                        pressEntityUuid = viewActionProvider.getCrosshairEntityUuid()
                         it.state = PointerState.View(
                             initialPosition = it.position,
                             lastPosition = it.position,
