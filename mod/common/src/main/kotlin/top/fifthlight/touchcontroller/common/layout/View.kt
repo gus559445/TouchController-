@@ -200,7 +200,15 @@ fun Context.View() {
         if (!state.moving) {
             // Move detect
             val delta = (pointer.position - state.initialPosition).fixAspectRadio(windowSize).squaredLength
-            val threshold = config.control.viewHoldDetectThreshold * 0.01f
+            val baseThreshold = config.control.viewHoldDetectThreshold * 0.01f
+            // 对着生物时把位移阈值放宽 2.5 倍：转视角时手指几乎不可能完全不动，
+            // 但真在滑动（超过 2.5 倍）仍然算「移动」——否则按住转视角、触控圈扫过生物
+            // 就会被判成长按，对已驯服的生物触发出一次右键，把控制模式切掉。
+            val threshold = if (viewActionProvider.getCrosshairTarget() == CrosshairTarget.ENTITY) {
+                baseThreshold * 2.5f
+            } else {
+                baseThreshold
+            }
             if (delta > threshold * threshold) {
                 moving = true
             }
@@ -369,8 +377,7 @@ fun Context.View() {
         // 对着生物时放宽长按判定：手指几乎不可能完全不动（触控视角总会轻微飘），
         // 而「点一下 = 攻击 / 按住 = 喂食驯服」这个区分全看时间，跟有没有微动无关。
         // 不放宽的话对着生物按住也会被判成短按，结果一驯服就变成打了一拳。
-        val longPressReached = pressTime >= config.control.viewHoldDetectTicks &&
-            (!moving || crosshairTarget == CrosshairTarget.ENTITY)
+        val longPressReached = pressTime >= config.control.viewHoldDetectTicks && !moving
         if (viewState == PointerState.View.ViewPointerState.INITIAL && longPressReached) {
             // 潜行举盾期间这一下要真正动手（挖方块 / 吃东西 / 用物品）：先收盾让路，
             // 再照常执行。动作结束后 SneakShieldHandler 会自动重新举盾，格挡不会丢。
