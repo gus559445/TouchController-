@@ -12,15 +12,7 @@ jobs:
       - name: Checkout 仓库文件
         uses: actions/checkout@v4
 
-      - name: 解压 source.zip
-        run: unzip source.zip
-
-      - name: 将源码移动到工作根目录
-        run: |
-          innerdir=$(unzip -qql source.zip | head -1 | awk '{print $4}' | cut -d/ -f1)
-          if [ -n "$innerdir" ] && [ -d "$innerdir" ];then
-            mv ./$innerdir/* ./
-          fi
+      # 源码直接躺在仓库根目录（mod/ 等），不再解压 source.zip
 
       # 环境配置保留（虽然没用，但防错）
       - name: 安装系统编译依赖
