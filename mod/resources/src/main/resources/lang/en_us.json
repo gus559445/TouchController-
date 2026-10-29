@@ -404,5 +404,6 @@
   "touchcontroller.widget.double_trigger.action": "Trigger action",
   "touchcontroller.screen.config.item.shield_items.title": "Shield",
   "touchcontroller.screen.config.item.shield_whitelist.title": "Custom shields",
-  "touchcontroller.screen.config.item.shield_whitelist.description": "Items in this list are treated as shields: sneaking raises them automatically. Right-click never raises a shield — blocking and right-click use are fully separated."
+  "touchcontroller.screen.config.item.shield_whitelist.description": "Items in this list are treated as shields: sneaking raises them automatically. Right-click never raises a shield — blocking and right-click use are fully separated.",
+  "touchcontroller.screen.custom_control_layout.layers.conditions.entity_selected": "Entity selected"
 }

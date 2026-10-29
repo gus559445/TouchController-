@@ -405,5 +405,6 @@
   "modmenu.descriptionTranslation.touchcontroller": "给 Java 版的 Minecraft 带来基岩版的操作方式！",
   "touchcontroller.screen.config.item.shield_items.title": "盾牌",
   "touchcontroller.screen.config.item.shield_whitelist.title": "自定义盾牌",
-  "touchcontroller.screen.config.item.shield_whitelist.description": "清单里的物品一律按盾牌处理：潜行时自动举盾格挡。右键永远不会举盾——举盾和右键使用彻底分开。"
+  "touchcontroller.screen.config.item.shield_whitelist.description": "清单里的物品一律按盾牌处理：潜行时自动举盾格挡。右键永远不会举盾——举盾和右键使用彻底分开。",
+  "touchcontroller.screen.custom_control_layout.layers.conditions.entity_selected": "选中实体"
 }

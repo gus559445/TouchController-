@@ -132,6 +132,9 @@ data class BuiltinLayerConditionKey(
         @SerialName("using_item")
         USING_ITEM(Texts.SCREEN_CUSTOM_CONTROL_LAYOUT_LAYERS_CONDITIONS_USING_ITEM),
 
+        @SerialName("entity_selected")
+        ENTITY_SELECTED(Texts.SCREEN_CUSTOM_CONTROL_LAYOUT_LAYERS_CONDITIONS_ENTITY_SELECTED),
+
         @SerialName("on_minecart")
         ON_MINECART(Texts.SCREEN_CUSTOM_CONTROL_LAYOUT_LAYERS_CONDITIONS_ON_MINECART),
 

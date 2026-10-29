@@ -205,6 +205,12 @@ object RenderEvents : KoinComponent {
                 BuiltinLayerConditionKey.Key.BLOCK_SELECTED,
                 viewActionProvider.getCrosshairTarget() == CrosshairTarget.BLOCK
             )
+            // 选中实体：触控圈/准星此刻指着任意一个实体（或还锁着松手前瞄到的那个）就算成立。
+            put(
+                BuiltinLayerConditionKey.Key.ENTITY_SELECTED,
+                viewActionProvider.getCrosshairTarget() == CrosshairTarget.ENTITY ||
+                    playerHandle?.targetedEntityId != null
+            )
             put(BuiltinLayerConditionKey.Key.ON_MINECART, ridingType == RidingEntityType.MINECART)
             put(BuiltinLayerConditionKey.Key.ON_BOAT, ridingType == RidingEntityType.BOAT)
             put(BuiltinLayerConditionKey.Key.ON_PIG, ridingType == RidingEntityType.PIG)
