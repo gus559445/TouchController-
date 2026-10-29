@@ -164,7 +164,9 @@ fun Context.View() {
                                             // 举盾时点生物：同样会被原版丢掉，所以先收盾、再自己打这一下。
                                             SneakShieldHandler.release(keyBindingHandler)
                                             TweakAction.provider.performAttackClick()
-                                        } else if (TweakState.provider.isHeldItemInWhitelist(config.item.usableItems)) {
+                                        } else if (TweakState.provider.isHeldItemInWhitelist(config.item.usableItems) ||
+                                            TweakState.provider.isHeldFoodItem()
+                                        ) {
                                             // 手上拿着清单点名的「右键道具」（戎卫号角、驭兽哨、末影珍珠、药水…）：
                                             // 点生物这一下是「用」而不是「打」。走原版右键队列，
                                             // 让物品自己的 interactLivingEntity / use 生效。

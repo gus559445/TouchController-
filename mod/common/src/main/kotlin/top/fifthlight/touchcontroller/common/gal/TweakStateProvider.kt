@@ -93,6 +93,14 @@ interface TweakStateProvider {
      * <p>用来判断「点生物这一下该用物品还是该攻击」：白名单里点名的都是右键交互型道具
      * （戎卫号角、驭兽哨、末影珍珠、药水…），拿着它们点生物应该是「用」，不是「打」。</p>
      */
+    /**
+     * 主手拿的是不是能吃的东西（**不管当前饱不饱**）。
+     *
+     * <p>用来判断「点生物这一下该用还是该打」：食物对生物基本只有喂食 / 驯服用途，
+     * 拿食物打生物没有意义，所以哪怕清单里没配也一律走右键。</p>
+     */
+    fun isHeldFoodItem(): Boolean
+
     fun isHeldItemInWhitelist(list: ItemList): Boolean
 
     fun hasUsableItemOnMainHand(list: ItemList): Boolean
@@ -132,6 +140,8 @@ object EmptyTweakStateProvider : TweakStateProvider {
     override fun isLongPressDigExempt(list: ItemList) = false
 
     override fun isHeldFoodEdibleNow() = false
+
+    override fun isHeldFoodItem() = false
 
     override fun isHeldItemInWhitelist(list: ItemList) = false
 

@@ -161,6 +161,11 @@ object TweakStateProviderImpl : TweakStateProvider {
      * <p>盾牌内置黑名单：右键举盾由潜行接管，盾牌留在清单里会让
      * 「主手方块 + 副手盾」长按被判成用物品，先放方块再挖。
      */
+    override fun isHeldFoodItem(): Boolean {
+        val player = client.player ?: return false
+        return player.mainHandItem.isEdible || player.offhandItem.isEdible
+    }
+
     override fun isHeldItemInWhitelist(list: ItemList): Boolean {
         val player = client.player ?: return false
         val stack = player.mainHandItem
