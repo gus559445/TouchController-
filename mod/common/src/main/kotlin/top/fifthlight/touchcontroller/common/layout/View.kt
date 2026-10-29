@@ -34,6 +34,14 @@ private const val STALE_USE_TICKS = 6
 private var clickOnlyUse = false
 
 /**
+ * 按下那一刻准星对着什么（方块 / 生物 / 空气）。
+ *
+ * <p>长按判定要求「现在对着的东西」和它一致：按住屏幕转视角、触控圈中途扫过生物时，
+ * 类型变了就不算长按，不会凭空对那只生物发出一记右键（对已驯服的生物会切控制模式）。</p>
+ */
+private var pressCrosshair: CrosshairTarget? = null
+
+/**
  * 这一段「按住使用」是不是真的开始用过。
  *
  * <p>用来区分两种「现在是 USING、但玩家没在用物品」：</p>
@@ -377,7 +385,10 @@ fun Context.View() {
         // 对着生物时放宽长按判定：手指几乎不可能完全不动（触控视角总会轻微飘），
         // 而「点一下 = 攻击 / 按住 = 喂食驯服」这个区分全看时间，跟有没有微动无关。
         // 不放宽的话对着生物按住也会被判成短按，结果一驯服就变成打了一拳。
-        val longPressReached = pressTime >= config.control.viewHoldDetectTicks && !moving
+        val longPressReached = pressTime >= config.control.viewHoldDetectTicks &&
+            !moving &&
+            // 按下时对着什么，现在就还得对着什么：中途扫到别的目标不算这一下的长按动作。
+            crosshairTarget == pressCrosshair
         if (viewState == PointerState.View.ViewPointerState.INITIAL && longPressReached) {
             // 潜行举盾期间这一下要真正动手（挖方块 / 吃东西 / 用物品）：先收盾让路，
             // 再照常执行。动作结束后 SneakShieldHandler 会自动重新举盾，格挡不会丢。
@@ -499,6 +510,7 @@ fun Context.View() {
                         // 新的触摸 = 玩家要重新瞄准：先解掉「瞄准指定实体」的锁定，
                         // 否则原版射线一直返回旧目标，永远换不到新的。
                         CrosshairLock.clearLock()
+                        pressCrosshair = viewActionProvider.getCrosshairTarget()
                         it.state = PointerState.View(
                             initialPosition = it.position,
                             lastPosition = it.position,
