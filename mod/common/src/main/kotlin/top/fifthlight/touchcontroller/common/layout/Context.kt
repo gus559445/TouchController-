@@ -128,6 +128,8 @@ data class ContextInput(
     val targetedEntityId: Identifier? = null,
     /** 锁定目标的当前状态键（坐/躺/颜色…）；没有状态维度为 null。 */
     val targetedEntityState: String? = null,
+    /** 锁定目标穿着的装备（盔甲槽的物品注册 ID）。「瞄准穿着某件装备的实体」靠它匹配。 */
+    val targetedEntityArmor: List<Identifier> = emptyList(),
 ) {
     companion object {
         val EMPTY = ContextInput()

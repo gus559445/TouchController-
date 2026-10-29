@@ -70,6 +70,11 @@ data class TargetedEntityConditions(
             return false
         }
         val wanted = state ?: return true
+        // 「穿戴指定装备」：状态键写成 armor:<物品注册ID>，按目标实体穿着的盔甲槽匹配。
+        if (wanted.startsWith(ARMOR_PREFIX)) {
+            val itemId = wanted.removePrefix(ARMOR_PREFIX)
+            return input.targetedEntityArmor.any { it.toString() == itemId }
+        }
         val current = input.targetedEntityState ?: return false
         if (current == wanted) {
             return true
@@ -84,6 +89,12 @@ data class TargetedEntityConditions(
 
         /** 拼出「幼年 + 某个基础状态」的组合键。 */
         fun babyOf(baseState: String): String = "$BABY_STATE:$baseState"
+
+        /** 「穿戴指定装备」的状态前缀；后面接物品注册 ID（如 armor:minecraft:diamond_helmet）。 */
+        const val ARMOR_PREFIX = "armor:"
+
+        /** 由物品注册 ID 拼出穿戴状态键。 */
+        fun armorOf(itemId: String): String = "$ARMOR_PREFIX$itemId"
     }
 }
 

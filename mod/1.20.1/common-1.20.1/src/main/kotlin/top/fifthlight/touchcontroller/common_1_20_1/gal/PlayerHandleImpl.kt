@@ -298,6 +298,28 @@ class PlayerHandleImpl(inner: LocalPlayer) : AbstractPlayerHandleImpl(inner) {
             return EntityStateHelper.currentState(entity)
         }
 
+    /** 锁定目标穿着的装备（盔甲槽），给「瞄准穿着某件装备的实体」用。 */
+    override val targetedEntityArmor: List<Identifier>
+        get() {
+            if (!TargetLock.valid()) {
+                return emptyList()
+            }
+            val uuid = TargetLock.uuid ?: return emptyList()
+            val level = Minecraft.getInstance().level ?: return emptyList()
+            val entity = level.entitiesForRendering().firstOrNull { it.uuid == uuid } ?: return emptyList()
+            if (entity !is net.minecraft.world.entity.LivingEntity) {
+                return emptyList()
+            }
+            return entity.armorSlots.mapNotNull { stack ->
+                if (stack.isEmpty) {
+                    null
+                } else {
+                    val rl = BuiltInRegistries.ITEM.getKey(stack.item)
+                    Identifier("${rl.namespace}:${rl.path}")
+                }
+            }
+        }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

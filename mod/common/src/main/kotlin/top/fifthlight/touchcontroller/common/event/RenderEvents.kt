@@ -231,6 +231,7 @@ object RenderEvents : KoinComponent {
                 ridingEntityId = playerHandle?.ridingEntityId,
                 targetedEntityId = playerHandle?.targetedEntityId,
                 targetedEntityState = playerHandle?.targetedEntityState,
+                targetedEntityArmor = playerHandle?.targetedEntityArmor ?: emptyList(),
             ),
             status = controllerHudModel.status,
             timer = controllerHudModel.timer,

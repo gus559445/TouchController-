@@ -61,6 +61,15 @@ interface PlayerHandle {
      */
     val targetedEntityState: String?
         get() = null
+
+    /**
+     * 锁定目标穿着的装备（盔甲槽里的物品注册 ID）。
+     *
+     * <p>「瞄准穿着某件装备的实体」这条图层条件靠它匹配：条件里存的是 `armor:<物品ID>`，
+     * 和这里的列表逐项比对。没有锁定、目标不是生物、或身上没穿东西时为空。</p>
+     */
+    val targetedEntityArmor: List<Identifier>
+        get() = emptyList()
 }
 
 interface PlayerHandleFactory {
