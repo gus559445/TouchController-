@@ -139,7 +139,10 @@ internal object TargetLock {
     }
 }
 
-class PlayerHandleImpl(inner: LocalPlayer) : AbstractPlayerHandleImpl(inner) {
+class PlayerHandleImpl(inner: LocalPlayer) : AbstractPlayerHandleImpl(inner), org.koin.core.component.KoinComponent {
+    /** 触控圈的状态（有没有画在屏幕上）。锁只能由「触控圈真的指着实体」建立。 */
+    private val controllerHudModel: top.fifthlight.touchcontroller.common.model.ControllerHudModel by org.koin.core.component.inject()
+
     override fun hasItemsOnHand(list: ItemList): Boolean = InteractionHand.entries.any { hand ->
         inner.getItemInHand(hand).toCombine().item in list
     }
@@ -257,8 +260,12 @@ class PlayerHandleImpl(inner: LocalPlayer) : AbstractPlayerHandleImpl(inner) {
         get() {
             val client = Minecraft.getInstance()
             val pick = client.crosshairPickEntity
+            // **只有触控圈真的在屏幕上**时才记录/刷新锁。
+            // 没有触控圈时 TouchController 的射线会退回屏幕中心，那是「隐藏准星」在指东西，
+            // 不是玩家在触控圈里选了实体——不能拿它建立锁，否则准星随手压到实体图层就亮了。
+            val hasTouchRing = controllerHudModel.result.crosshairStatus != null
             // 只认 6 格内的实体：更远的瞄到也不算瞄准，图层一律不启用。
-            if (pick != null && client.player?.distanceTo(pick)?.let { it <= TARGET_MAX_DISTANCE } == true) {
+            if (hasTouchRing && pick != null && client.player?.distanceTo(pick)?.let { it <= TARGET_MAX_DISTANCE } == true) {
                 TargetLock.uuid = pick.uuid
                 TargetLock.pos = pick.position()
                 // 连那一下的命中结果一起存下来：松手后图层的按钮要打的就是这个目标。

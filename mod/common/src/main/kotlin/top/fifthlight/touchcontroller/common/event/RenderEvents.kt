@@ -205,13 +205,12 @@ object RenderEvents : KoinComponent {
                 BuiltinLayerConditionKey.Key.BLOCK_SELECTED,
                 viewActionProvider.getCrosshairTarget() == CrosshairTarget.BLOCK
             )
-            // 选中实体：只有**触控圈真的在屏幕上**、而且指着一个实体时才算。
-            // 不能只看「瞄准锁」——瞄准锁是给「瞄准指定实体」条件用的，松手后还会保持，
-            // 拿它判断会让触控圈都没了图层还亮着。
+            // 选中实体：锁着一个实体就算成立（松手后保持，实体跑开/死亡/超距才失效）。
+            // 锁本身只会在「触控圈真的在屏幕上指着实体」时建立（见 PlayerHandleImpl），
+            // 所以隐藏准星在屏幕中心压到实体不会点亮它。
             put(
                 BuiltinLayerConditionKey.Key.ENTITY_SELECTED,
-                controllerHudModel.result.crosshairStatus != null &&
-                    viewActionProvider.getCrosshairTarget() == CrosshairTarget.ENTITY
+                playerHandle?.targetedEntityId != null
             )
             put(BuiltinLayerConditionKey.Key.ON_MINECART, ridingType == RidingEntityType.MINECART)
             put(BuiltinLayerConditionKey.Key.ON_BOAT, ridingType == RidingEntityType.BOAT)
