@@ -315,7 +315,12 @@ internal fun Context.viewGestureRefactored() {
                 // 那时饥饿值已满，自然就走「挖方块」分支。
                 gate.apply(listOf(ViewEffect.UnlockUse, ViewEffect.UnlockAttack), timer.renderTick)
                 nextViewState = ViewPointerState.CONSUMED
-            } else if (!player.isUsingItem && crosshairTarget != CrosshairTarget.ENTITY) {
+            } else if (!player.isUsingItem &&
+                crosshairTarget != CrosshairTarget.ENTITY &&
+                // 只续「有使用时长」的物品（食物/弓/蓄力武器）。投掷物 useDuration == 0，
+                // 靠原版 rightClickDelay 控制节奏；每帧替它发 useItem 就会变成每帧扔一个。
+                heldItemUseDuration() > 0
+            ) {
                 // 上一口吃完了但手指还按着：续上，别让这一下右键落到方块上变成放置。
                 // 对着生物时绝不主动 useItem —— 那会把「喂牛/喂羊/驯服」变成自己啃食物，
                 // 右键要留给原版的 interactEntity。

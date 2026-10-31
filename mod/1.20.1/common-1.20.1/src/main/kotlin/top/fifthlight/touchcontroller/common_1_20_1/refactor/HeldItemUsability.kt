@@ -30,6 +30,11 @@ internal fun findUsableHand(list: ItemList): InteractionHand? {
     return InteractionHand.entries.firstOrNull { hand ->
         val stack = minecraftPlayer.getItemInHand(hand)
         if (stack.isEmpty) return@firstOrNull false
+        // 有蓄力时长的物品（弓 72000、月光蠕虫女王 FIRING_TIME 这类）长按就是蓄力，
+        // 不看「可长按使用」清单 —— 它们不可能被「放/用一次」消费掉。
+        // 这条对应主仓库 View.kt 里 itemUsable 的第一项 isLongPressUsableItem()。
+        // 食物排除在外：食物也有 useDuration，要走饥饿判定。
+        if (!stack.isEdible && stack.useDuration > 0) return@firstOrNull true
         if (stack.toCombine().item !in list) return@firstOrNull false
         // 弓 / 弩：没有弹药就拉不动。上游会照样判「能用」→ 锁 USE → 长按方块既不射也不挖。
         // 这里按原版 getProjectile 的实际结果判断，没箭就当这手用不出去，长按改判挖方块。
@@ -44,6 +49,22 @@ internal fun findUsableHand(list: ItemList): InteractionHand? {
 }
 
 internal fun isHeldItemUsableNow(list: ItemList): Boolean = findUsableHand(list) != null
+
+/**
+ * 主手物品的「使用时长」。
+ *
+ * <p>用来区分两类东西：</p>
+ * <ul>
+ *   <li>&gt; 0：食物、弓、蓄力武器 —— 会进入 isUsingItem，需要逐帧续着；</li>
+ *   <li>= 0：投掷物（雪球/鸡蛋/末影珍珠）、点一下生效的道具 —— 原版靠 rightClickDelay
+ *       控制节奏，**不能**每帧替它发 useItem，否则就是每帧扔一个。</li>
+ * </ul>
+ */
+internal fun heldItemUseDuration(): Int {
+    val player = Minecraft.getInstance().player ?: return 0
+    val stack = player.mainHandItem
+    return if (stack.isEmpty) 0 else stack.useDuration
+}
 
 /**
  * 主动**开始**使用手上物品（吃第一口 / 拉弓），不等原版从右键路径自己走到这一步。
