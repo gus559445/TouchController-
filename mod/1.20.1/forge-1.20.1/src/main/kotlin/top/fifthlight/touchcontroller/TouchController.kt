@@ -33,6 +33,7 @@ import top.fifthlight.touchcontroller.common.gal.UseSuppress
 import top.fifthlight.touchcontroller.common.model.ControllerHudModel
 import top.fifthlight.touchcontroller.common.ui.screen.getConfigScreen
 import top.fifthlight.touchcontroller.common_1_20_1.gal.ShieldWhitelist
+import top.fifthlight.touchcontroller.common_1_20_1.refactor.ViewGestureRefactorBootstrap
 import top.fifthlight.touchcontroller.common_1_20_1.versionModule
 import top.fifthlight.touchcontroller.tweak.ShieldTweaks
 import top.fifthlight.touchcontroller.common_1_20_x.GameConfigEditorImpl
@@ -65,6 +66,9 @@ class TouchController : KoinComponent {
                 versionModule,
             )
         }
+
+        // 用状态机版本接管视野区手势
+        ViewGestureRefactorBootstrap.install()
 
         initialize()
 
