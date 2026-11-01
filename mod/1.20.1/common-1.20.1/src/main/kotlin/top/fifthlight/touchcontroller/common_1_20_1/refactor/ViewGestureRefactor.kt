@@ -13,6 +13,7 @@ import top.fifthlight.touchcontroller.common.gal.DefaultKeyBindingType
 import top.fifthlight.touchcontroller.common.gal.KeyBindingHandler
 import top.fifthlight.touchcontroller.common.gal.KeyBindingState
 import top.fifthlight.touchcontroller.common.gal.PlayerHandleFactory
+import top.fifthlight.touchcontroller.common.gal.TweakAction
 import top.fifthlight.touchcontroller.common.gal.ViewActionProvider
 import top.fifthlight.touchcontroller.common.helper.fixAspectRadio
 import top.fifthlight.touchcontroller.common.layout.Context
@@ -47,6 +48,9 @@ internal sealed interface ViewEffect {
 
     /** 补一次挥手：点方块时即使原版没做成任何事，也要有可见反馈 */
     data object SwingArm : ViewEffect
+
+    /** 四周放置：准星对着空气、手里拿方块、人贴着方块低头 —— 贴着脚边放一块 */
+    data object ReachAroundPlace : ViewEffect
 }
 
 /**
@@ -66,6 +70,8 @@ internal object ViewGestureMachine {
         val holdDetectTicks: Int,
         /** 惰性求值：原实现只在「可能是短按」时才查一次准星 */
         val crosshairTarget: () -> CrosshairTarget?,
+        /** 四周放置此刻可用（config.tweaks.reachAround && canReachAroundPlace） */
+        val reachAroundAvailable: Boolean = false,
     )
 
     data class ReleaseDecision(
@@ -103,7 +109,13 @@ internal object ViewGestureMachine {
                     // 点方块：补一次挥手。原版只在 useItemOn 真的做成时才挥，
                     // 拿用不出去的东西点方块会一点反馈都没有。
                     CrosshairTarget.BLOCK -> ReleaseDecision(listOf(ViewEffect.SwingArm, ViewEffect.TapUse))
-                    CrosshairTarget.MISS -> ReleaseDecision(listOf(ViewEffect.TapUse))
+                    CrosshairTarget.MISS ->
+                        // 对着空气点一下：能贴边放就贴着脚边放一块（四周放置），否则普通 use
+                        if (input.reachAroundAvailable) {
+                            ReleaseDecision(listOf(ViewEffect.ReachAroundPlace))
+                        } else {
+                            ReleaseDecision(listOf(ViewEffect.TapUse))
+                        }
                     CrosshairTarget.ENTITY -> ReleaseDecision(listOf(ViewEffect.TapAttack))
                 }
             }
@@ -150,6 +162,8 @@ internal class ViewKeyGate(
     private val startUsingItem: () -> Unit = {},
     /** 执行 [ViewEffect.SwingArm]：1.20.1 侧调 player.swing */
     private val swingArm: () -> Unit = {},
+    /** 执行 [ViewEffect.ReachAroundPlace]：走 TweakAction 的四周放置代执行 */
+    private val reachAroundPlace: () -> Unit = {},
 ) {
     fun attack(): KeyBindingState = handler.getState(DefaultKeyBindingType.ATTACK)
 
@@ -171,6 +185,7 @@ internal class ViewKeyGate(
                 ViewEffect.TapUse -> use().click()
                 ViewEffect.StartUseItem -> startUsingItem()
                 ViewEffect.SwingArm -> swingArm()
+                ViewEffect.ReachAroundPlace -> reachAroundPlace()
             }
         }
         if (assertLocks) checkMutualExclusion()
@@ -207,6 +222,7 @@ internal fun Context.viewGestureRefactored() {
         owner = viewUuid,
         startUsingItem = { findUsableHand(config.item.usableItems)?.let(::startUsingHeldItem) },
         swingArm = ::swingArm,
+        reachAroundPlace = { TweakAction.provider.performUseClick(reachAround = true) },
     )
 
     gate.refresh(timer.renderTick)
@@ -235,6 +251,8 @@ internal fun Context.viewGestureRefactored() {
                 viewAlreadyReleased = releasedView,
                 holdDetectTicks = config.control.viewHoldDetectTicks,
                 crosshairTarget = viewActionProvider::getCrosshairTarget,
+                reachAroundAvailable = config.tweaks.reachAround &&
+                    TweakAction.provider.canReachAroundPlace(),
             )
         )
         gate.apply(decision.effects, timer.renderTick)
