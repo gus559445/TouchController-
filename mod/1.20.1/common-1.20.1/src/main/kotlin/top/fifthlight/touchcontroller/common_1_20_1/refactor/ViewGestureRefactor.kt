@@ -8,6 +8,7 @@ import org.koin.core.component.get
 import org.slf4j.LoggerFactory
 import top.fifthlight.data.Offset
 import top.fifthlight.touchcontroller.common.ext.fastRandomUuid
+import top.fifthlight.touchcontroller.common.gal.CrosshairLock
 import top.fifthlight.touchcontroller.common.gal.CrosshairTarget
 import top.fifthlight.touchcontroller.common.gal.DefaultKeyBindingType
 import top.fifthlight.touchcontroller.common.gal.KeyBindingHandler
@@ -357,6 +358,11 @@ internal fun Context.viewGestureRefactored() {
                 if (currentViewPointer != null) {
                     it.state = PointerState.Invalid
                 } else {
+                    // 手重新按到视野区 = 玩家开始了新的手动操作（长按挖方块 / 短按点方块）。
+                    // 先把「瞄准实体」的锁解掉，否则 pick 还停在瞄过的那只实体上：
+                    // 挖不动方块、点屏幕也还打它。松手后点图层按钮不经过这里，
+                    // 那条路径仍然用锁定目标。
+                    CrosshairLock.clearLock()
                     it.state = PointerState.View(
                         initialPosition = it.position,
                         lastPosition = it.position,
