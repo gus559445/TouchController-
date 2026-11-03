@@ -140,6 +140,48 @@ internal object TargetLock {
     }
 }
 
+/** 射线与「眼睛→实体中心」的夹角余弦下限：约 6°，大致等于准星压在实体上的容差。 */
+private const val AIM_COS_THRESHOLD = 0.9945
+
+/**
+ * 沿触控圈方向自己找一只实体（只用于「瞄准某实体」的锁定判定）。
+ *
+ * <p>为什么不只靠 {@code crosshairPickEntity}：瞄准锁生效期间原版 pick 的实体拾取半径
+ * 会被旧目标的命中位置压小（{@code hitResult.getLocation()} 到眼睛的距离），
+ * 触控圈滑到另一个更远的实体时原版根本拾取不到，图层和锁就换不过去。
+ * 这里直接从眼睛沿触控圈方向扫 6 格内最近的实体，滑到哪只就认哪只。</p>
+ */
+private fun findAimedEntity(client: Minecraft): net.minecraft.world.entity.Entity? {
+    val player = client.player ?: return null
+    val level = client.level ?: return null
+    val dir = top.fifthlight.touchcontroller.common.helper.CrosshairTargetHelper.lastCrosshairDirection
+    if (dir.x == 0.0 && dir.y == 0.0 && dir.z == 0.0) {
+        return null
+    }
+    val eye = player.eyePosition
+    var best: net.minecraft.world.entity.Entity? = null
+    var bestDistance = Double.MAX_VALUE
+    for (entity in level.entitiesForRendering()) {
+        if (entity === player || !entity.isAlive) {
+            continue
+        }
+        val center = entity.position().add(0.0, entity.bbHeight / 2.0, 0.0)
+        val to = center.subtract(eye)
+        val distance = to.length()
+        if (distance < 0.1 || distance > TARGET_MAX_DISTANCE) {
+            continue
+        }
+        if (dir.dot(to.x / distance, to.y / distance, to.z / distance) < AIM_COS_THRESHOLD) {
+            continue
+        }
+        if (distance < bestDistance) {
+            bestDistance = distance
+            best = entity
+        }
+    }
+    return best
+}
+
 class PlayerHandleImpl(inner: LocalPlayer) : AbstractPlayerHandleImpl(inner), org.koin.core.component.KoinComponent {
     /** 触控圈的状态（有没有画在屏幕上）。锁只能由「触控圈真的指着实体」建立。 */
     private val controllerHudModel: top.fifthlight.touchcontroller.common.model.ControllerHudModel by inject()
@@ -260,7 +302,10 @@ class PlayerHandleImpl(inner: LocalPlayer) : AbstractPlayerHandleImpl(inner), or
     override val targetedEntityId: Identifier?
         get() {
             val client = Minecraft.getInstance()
+            // 触控圈真的在屏幕上时，原版拾取不到（被旧目标的命中半径卡住）就自己射一次，
+            // 这样滑到另一只实体上，图层和锁都会立刻跟着换。
             val pick = client.crosshairPickEntity
+                ?: if (controllerHudModel.result.crosshairStatus != null) findAimedEntity(client) else null
             // **只有触控圈真的在屏幕上**时才记录/刷新锁。
             // 没有触控圈时 TouchController 的射线会退回屏幕中心，那是「隐藏准星」在指东西，
             // 不是玩家在触控圈里选了实体——不能拿它建立锁，否则准星随手压到实体图层就亮了。
