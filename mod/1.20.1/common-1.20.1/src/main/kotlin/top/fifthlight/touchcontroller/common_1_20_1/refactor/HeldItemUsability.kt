@@ -30,6 +30,11 @@ internal fun findUsableHand(list: ItemList): InteractionHand? {
     return InteractionHand.entries.firstOrNull { hand ->
         val stack = minecraftPlayer.getItemInHand(hand)
         if (stack.isEmpty) return@firstOrNull false
+        // 盾牌：useDuration 也是 72000（举盾），但它不是「长按蓄力」类物品。
+        // 判成可用的话，拿着盾长按方块会被当成 USING（一直举盾），方块就挖不动了；
+        // 而且这条在「可长按使用」清单和黑名单之前返回，所以往清单里加盾 / 加黑名单都没用。
+        // 潜行举盾由 SneakShieldHandler 每帧替玩家按住 USE 键，不经过这里。
+        if (stack.item is net.minecraft.world.item.ShieldItem) return@firstOrNull false
         // 有蓄力时长的物品（弓 72000、月光蠕虫女王 FIRING_TIME 这类）长按就是蓄力，
         // 不看「可长按使用」清单 —— 它们不可能被「放/用一次」消费掉。
         // 这条对应主仓库 View.kt 里 itemUsable 的第一项 isLongPressUsableItem()。
