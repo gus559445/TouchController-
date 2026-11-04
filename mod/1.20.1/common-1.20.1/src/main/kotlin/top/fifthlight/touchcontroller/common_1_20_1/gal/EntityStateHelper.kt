@@ -38,6 +38,41 @@ import top.fifthlight.touchcontroller.common.config.condition.TargetedEntityCond
  */
 object EntityStateHelper {
 
+    /** 实体控制器（MobController）联动的静态入口；没装这个模组时是 null，相关状态一律不出现。 */
+    private val mobControlledData = runCatching {
+        Class.forName("net.xiaoyu.mob_controller.util.MobControlledData")
+    }.getOrNull()
+
+    /** MobController 的控制模式文本（follow / stay / wander），未受控返回 null。 */
+    private fun mobControlMode(entity: Entity): String? {
+        val cls = mobControlledData ?: return null
+        if (entity !is LivingEntity) return null
+        return runCatching {
+            val controlled = cls.getMethod("isControlledEntity", LivingEntity::class.java)
+                .invoke(null, entity) as? Boolean ?: false
+            if (!controlled) {
+                return null
+            }
+            val mode = cls.getMethod("getControlMode", net.minecraft.world.entity.Mob::class.java)
+                .invoke(null, entity) ?: return null
+            mode.toString().lowercase()
+        }.getOrNull()
+    }
+
+    /** 实体控制器联动状态（驯服 / 跟随 / 停留 / 游荡）；没装模组时是空表。 */
+    private fun mobControllerStates(): List<Pair<String, String>> {
+        if (mobControlledData == null) {
+            return emptyList()
+        }
+        val prefix = TargetedEntityConditions.MOB_CONTROLLER_PREFIX
+        return listOf(
+            TargetedEntityConditions.MOB_CONTROLLER_TAMED to "驯服（实体控制器）",
+            "${prefix}follow" to "跟随",
+            "${prefix}stay" to "停留",
+            "${prefix}wander" to "游荡",
+        )
+    }
+
     private const val BABY = TargetedEntityConditions.BABY_STATE
     private const val BABY_LABEL = "幼年"
     private const val ADULT_STATE = "adult"
@@ -45,6 +80,9 @@ object EntityStateHelper {
 
     /** 读实体实例当前的状态键；没有状态维度的实体返回 null。 */
     fun currentState(entity: Entity): String? {
+        // 实体控制器（MobController）收服的生物：状态就是它的控制模式（跟随/停留/游荡）。
+        // 优先于原版那几维（驯服/坐/睡/颜色），被控制器接管时玩家关心的是它在干什么。
+        mobControlMode(entity)?.let { return TargetedEntityConditions.MOB_CONTROLLER_PREFIX + it }
         val base = baseStatesOf(entity)
         val isBaby = entity is LivingEntity && entity.isBaby
         // 有基础状态维度（狼的驯服/坐、羊的颜色、村民的睡…）：幼年就拼成 `baby:<基础状态>`，
@@ -69,11 +107,11 @@ object EntityStateHelper {
         // 多出来的条目永远不会匹配，顶多列表里多两条选不中的选项，
         // 比「主界面里根本看不到幼年」好。
         if (cls != null && !canBeBaby(cls)) {
-            return base
+            return base + mobControllerStates()
         }
         // 没有别的状态维度：幼年 / 成年正好把这一类分完，两条都给。
         if (base.isEmpty()) {
-            return listOf(BABY to BABY_LABEL, ADULT_STATE to ADULT_LABEL)
+            return listOf(BABY to BABY_LABEL, ADULT_STATE to ADULT_LABEL) + mobControllerStates()
         }
         // 已经有别的维度（狼、羊、村民…）：
         //   · 一条「幼年」不挑具体状态（幼年狼 / 幼年白羊都算）
@@ -81,7 +119,8 @@ object EntityStateHelper {
         // 成年个体继续用原来的状态，不再额外生成永远匹配不上的 `adult`。
         return base +
             (BABY to BABY_LABEL) +
-            base.map { (key, label) -> TargetedEntityConditions.babyOf(key) to "$BABY_LABEL · $label" }
+            base.map { (key, label) -> TargetedEntityConditions.babyOf(key) to "$BABY_LABEL · $label" } +
+            mobControllerStates()
     }
 
     /**

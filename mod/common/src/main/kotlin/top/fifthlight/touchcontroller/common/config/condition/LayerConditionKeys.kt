@@ -79,6 +79,11 @@ data class TargetedEntityConditions(
         if (current == wanted) {
             return true
         }
+        // 实体控制器（MobController）联动：选「驯服」时，被收服的生物不论当前是
+        // 跟随 / 停留 / 游荡都算命中。
+        if (wanted == MOB_CONTROLLER_TAMED && current.startsWith(MOB_CONTROLLER_PREFIX)) {
+            return true
+        }
         // 只选了「幼年」时，幼年狼 / 幼年白羊 / 幼年村民 都算命中。
         return wanted == BABY_STATE && current.startsWith(BABY_STATE)
     }
@@ -89,6 +94,12 @@ data class TargetedEntityConditions(
 
         /** 拼出「幼年 + 某个基础状态」的组合键。 */
         fun babyOf(baseState: String): String = "$BABY_STATE:$baseState"
+
+        /** 实体控制器（MobController）联动的状态前缀；后面接 follow / stay / wander / tamed。 */
+        const val MOB_CONTROLLER_PREFIX = "mc:"
+
+        /** 「驯服」：被实体控制器收服，任意控制模式都算。 */
+        const val MOB_CONTROLLER_TAMED = "mc:tamed"
 
         /** 「穿戴指定装备」的状态前缀；后面接物品注册 ID（如 armor:minecraft:diamond_helmet）。 */
         const val ARMOR_PREFIX = "armor:"
