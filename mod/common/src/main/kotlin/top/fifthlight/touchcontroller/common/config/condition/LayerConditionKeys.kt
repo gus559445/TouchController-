@@ -109,6 +109,33 @@ data class TargetedEntityConditions(
     }
 }
 
+/**
+ * 「选中实体」：瞄着/锁着一个实体时就成立，可以再指定它的状态。
+ *
+ * <p>状态目前只接实体控制器（MobController）那一套：驯服 / 跟随 / 停留 / 游荡。
+ * [state] 为空表示不限状态。旧配置里那种不带参数的「选中实体」是内置条件
+ * [BuiltinLayerConditionKey.Key.ENTITY_SELECTED]，读取仍然兼容，只是添加列表里换成这一条。</p>
+ */
+@Serializable
+@SerialName("entity_selected")
+data class EntitySelectedConditions(
+    val state: String? = null,
+) : LayerConditions.Key {
+    override fun isFulfilled(input: ContextInput): Boolean {
+        if (input.targetedEntityId == null) {
+            return false
+        }
+        val wanted = state ?: return true
+        val current = input.targetedEntityState ?: return false
+        if (current == wanted) {
+            return true
+        }
+        // 选「驯服」时，被实体控制器收服的生物不论跟随 / 停留 / 游荡都算命中。
+        return wanted == TargetedEntityConditions.MOB_CONTROLLER_TAMED &&
+            current.startsWith(TargetedEntityConditions.MOB_CONTROLLER_PREFIX)
+    }
+}
+
 @Serializable
 @SerialName("builtin")
 data class BuiltinLayerConditionKey(

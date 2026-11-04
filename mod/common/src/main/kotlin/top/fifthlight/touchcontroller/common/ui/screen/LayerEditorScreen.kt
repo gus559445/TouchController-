@@ -31,6 +31,7 @@ import top.fifthlight.touchcontroller.common.config.condition.CustomLayerConditi
 import top.fifthlight.touchcontroller.common.config.condition.HoldingItemConditions
 import top.fifthlight.touchcontroller.common.config.condition.WearingItemConditions
 import top.fifthlight.touchcontroller.common.config.condition.RidingEntityConditions
+import top.fifthlight.touchcontroller.common.config.condition.EntitySelectedConditions
 import top.fifthlight.touchcontroller.common.config.condition.TargetedEntityConditions
 import top.fifthlight.touchcontroller.common.config.condition.LayerConditions
 import top.fifthlight.touchcontroller.common.config.preset.LayerCustomConditions
@@ -51,8 +52,9 @@ private fun LayerConditionItem(
     onKeyChanged: (LayerConditions.Key) -> Unit = {},
     onItemRemoved: () -> Unit = {},
 ) {
-    // 「瞄准指定实体」这一条下面还要挂一排状态选择器，所以整行包进 Column。
+    // 「瞄准指定实体」/「选中实体」这两条下面还要挂一排状态选择器，所以整行包进 Column。
     val targetedCondition = item.key as? TargetedEntityConditions
+    val selectedEntityCondition = item.key as? EntitySelectedConditions
     Column(modifier = Modifier.fillMaxWidth()) {
     Row(
         modifier = Modifier
@@ -99,6 +101,10 @@ private fun LayerConditionItem(
 
                 is TargetedEntityConditions -> {
                     Text(Text.literal("瞄准: ${item.key.entity}"))
+                }
+
+                is EntitySelectedConditions -> {
+                    Text(Text.translatable(Texts.SCREEN_CUSTOM_CONTROL_LAYOUT_LAYERS_CONDITIONS_ENTITY_SELECTED))
                 }
             }
         }
@@ -196,6 +202,46 @@ private fun LayerConditionItem(
         ) {
             Text(Text.literal("状态: " + (stateLabel ?: "任意")))
             SelectIcon(expanded = stateExpanded)
+        }
+    }
+
+    // 「选中实体」的状态选择器：实体类型不固定，所以只给实体控制器那几个状态。
+    if (selectedEntityCondition != null) {
+        val selectedState = selectedEntityCondition.state
+        val stateLabel = when (selectedState) {
+            null -> "任意"
+            TargetedEntityConditions.MOB_CONTROLLER_TAMED -> "驯服"
+            TargetedEntityConditions.MOB_CONTROLLER_PREFIX + "follow" -> "跟随"
+            TargetedEntityConditions.MOB_CONTROLLER_PREFIX + "stay" -> "停留"
+            TargetedEntityConditions.MOB_CONTROLLER_PREFIX + "wander" -> "游荡"
+            else -> selectedState
+        }
+        var expanded by remember(selectedEntityCondition) { mutableStateOf(false) }
+        val options: List<Pair<String, String?>> = listOf(
+            "任意状态" to null,
+            "驯服" to TargetedEntityConditions.MOB_CONTROLLER_TAMED,
+            "跟随" to TargetedEntityConditions.MOB_CONTROLLER_PREFIX + "follow",
+            "停留" to TargetedEntityConditions.MOB_CONTROLLER_PREFIX + "stay",
+            "游荡" to TargetedEntityConditions.MOB_CONTROLLER_PREFIX + "wander",
+        )
+        Select(
+            modifier = Modifier.fillMaxWidth(),
+            expanded = expanded,
+            onExpandedChanged = { expanded = it },
+            dropDownContent = {
+                DropdownItemList(
+                    modifier = Modifier.verticalScroll(),
+                    onItemSelected = { expanded = false },
+                    items = options.map { (label, stateKey) ->
+                        Pair(Text.literal(label)) {
+                            onKeyChanged(selectedEntityCondition.copy(state = stateKey))
+                        }
+                    }.toPersistentList(),
+                )
+            }
+        ) {
+            Text(Text.literal("状态: $stateLabel"))
+            SelectIcon(expanded = expanded)
         }
     }
     }

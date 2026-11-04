@@ -13,6 +13,7 @@ import top.fifthlight.combine.widget.ui.Text
 import top.fifthlight.touchcontroller.assets.Texts
 import top.fifthlight.touchcontroller.assets.Textures
 import top.fifthlight.touchcontroller.common.config.condition.BuiltinLayerConditionKey
+import top.fifthlight.touchcontroller.common.config.condition.EntitySelectedConditions
 import top.fifthlight.touchcontroller.common.ui.component.ListButton
 
 object BuiltInTab : LayerConditionTab() {
@@ -36,6 +37,10 @@ object BuiltInTab : LayerConditionTab() {
             expandColumnWidth = true,
         ) {
             for (key in BuiltinLayerConditionKey.Key.entries) {
+                // 「选中实体」换成可带状态的那一条（下面单独画），旧的纯布尔条目不再出现在添加列表里。
+                if (key == BuiltinLayerConditionKey.Key.ENTITY_SELECTED) {
+                    continue
+                }
                 ListButton(
                     onClick = {
                         layerConditionTabContext.onConditionAdded(
@@ -45,6 +50,14 @@ object BuiltInTab : LayerConditionTab() {
                 ) {
                     Text(Text.translatable(key.text))
                 }
+            }
+            // 选中实体（可指定实体控制器的状态：驯服 / 跟随 / 停留 / 游荡）
+            ListButton(
+                onClick = {
+                    layerConditionTabContext.onConditionAdded(EntitySelectedConditions())
+                }
+            ) {
+                Text(Text.translatable(Texts.SCREEN_CUSTOM_CONTROL_LAYOUT_LAYERS_CONDITIONS_ENTITY_SELECTED))
             }
         }
     }
