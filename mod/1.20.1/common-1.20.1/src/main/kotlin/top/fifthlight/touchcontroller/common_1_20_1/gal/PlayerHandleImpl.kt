@@ -363,14 +363,20 @@ class PlayerHandleImpl(inner: LocalPlayer) : AbstractPlayerHandleImpl(inner), or
             if (entity !is net.minecraft.world.entity.LivingEntity) {
                 return emptyList()
             }
-            return entity.armorSlots.mapNotNull { stack ->
+            val worn = entity.armorSlots.mapNotNull { stack ->
                 if (stack.isEmpty) {
                     null
                 } else {
                     val rl = BuiltInRegistries.ITEM.getKey(stack.item)
                     Identifier("${rl.namespace}:${rl.path}")
                 }
+            }.toMutableList()
+            // 鞍不在 armorSlots 里（马/猪/炽足兽这些把鞍挂在各自的背包），单独补一条，
+            // 否则「实体穿戴指定物品 = 鞍」永远匹配不上装好鞍的生物。
+            if (entity is net.minecraft.world.entity.Saddleable && entity.isSaddled) {
+                worn += Identifier("minecraft:saddle")
             }
+            return worn
         }
 
     override fun equals(other: Any?): Boolean {
