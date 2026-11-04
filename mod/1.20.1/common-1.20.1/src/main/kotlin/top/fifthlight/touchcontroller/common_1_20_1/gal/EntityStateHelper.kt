@@ -36,12 +36,41 @@ import top.fifthlight.touchcontroller.common.config.condition.TargetedEntityCond
  * <p>只有「没有别的状态维度、但有幼年形态」的类（牛、猪、鸡、僵尸…）才在
  * `baby` 之外再给一条 `adult`：这类生物成年状态没有别的维度可以表达。</p>
  */
+private val stateLogger = org.slf4j.LoggerFactory.getLogger("TouchController/EntityState")
+
 object EntityStateHelper {
 
-    /** 实体控制器（MobController）联动的静态入口；没装这个模组时是 null，相关状态一律不出现。 */
-    private val mobControlledData = runCatching {
-        Class.forName("net.xiaoyu.mob_controller.util.MobControlledData")
-    }.getOrNull()
+    /**
+     * 实体控制器（MobController）联动的静态入口；没装这个模组时是 null，相关状态一律不出现。
+     *
+     * <p>不能用当前类加载器直接 {@code Class.forName}：Forge 每个模组一个
+     * {@code ModuleClassLoader}，这里加载不到别的模组的类。要按顺序试
+     * 线程上下文加载器（Forge 的 TransformingClassLoader，能跨模组）→ 自身 → 系统。
+     * 而且必须延迟到真正要用的时候（lazy）：类加载器在模组构造阶段还没完全就绪。</p>
+     */
+    private val mobControlledData: Class<*>? by lazy { loadMobControllerDataClass() }
+
+    private const val MOB_CONTROLLER_DATA_CLASS = "net.xiaoyu.mob_controller.util.MobControlledData"
+
+    private fun loadMobControllerDataClass(): Class<*>? {
+        val loaders = listOfNotNull(
+            Thread.currentThread().contextClassLoader,
+            // 原版类由 modlauncher 的 TransformingClassLoader 加载，那个加载器认得所有模组的类。
+            runCatching { net.minecraft.client.Minecraft::class.java.classLoader }.getOrNull(),
+            EntityStateHelper::class.java.classLoader,
+            ClassLoader.getSystemClassLoader(),
+        )
+        for (loader in loaders) {
+            runCatching { Class.forName(MOB_CONTROLLER_DATA_CLASS, false, loader) }
+                .getOrNull()
+                ?.let {
+                    stateLogger.info("MobController 联动已启用：{}", it.name)
+                    return it
+                }
+        }
+        stateLogger.info("未找到 MobController（{}），实体控制器相关状态不显示", MOB_CONTROLLER_DATA_CLASS)
+        return null
+    }
 
     /** MobController 的控制模式文本（follow / stay / wander），未受控返回 null。 */
     private fun mobControlMode(entity: Entity): String? {
