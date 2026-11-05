@@ -34,10 +34,15 @@ import top.fifthlight.touchcontroller.common.gal.TweakState
  *   <li>攻击、拉弓、站起来、开界面都会让路给它们（盾自动放下，结束后自动重举）。</li>
  * </ul>
  */
+private val shieldLogger = org.slf4j.LoggerFactory.getLogger("TouchController/Shield")
+
 object SneakShieldHandler {
 
     /** 盾此刻是不是举着的（我们自己维护，避免重复判断）。 */
     private var isRaised = false
+
+    /** 上一次打印的诊断行，用来抑制重复日志。 */
+    private var lastShieldLog = ""
 
     /**
      * 立刻收盾。
@@ -101,6 +106,15 @@ object SneakShieldHandler {
                 !bowCharging &&
                 !usingOther &&
                 TweakState.provider.hasShieldOnHand()
+
+        // 只在状态变化时打一行，避免每帧刷屏。
+        val shieldLine = "raise=$shouldRaise raised=$isRaised sneaking=${player?.isSneaking}" +
+            " usingItem=${player?.isUsingItem} attacked=$attacked using=$using" +
+            " hasShield=${TweakState.provider.hasShieldOnHand()}"
+        if (shieldLine != lastShieldLog) {
+            shieldLogger.info("shield: {}", shieldLine)
+            lastShieldLog = shieldLine
+        }
 
         if (shouldRaise) {
             // 主动走原版 useItem 管道把盾举起来（指定盾所在那只手，所以主手是食物也不影响）。

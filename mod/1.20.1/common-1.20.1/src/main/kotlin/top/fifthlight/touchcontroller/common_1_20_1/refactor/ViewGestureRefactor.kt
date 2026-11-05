@@ -35,6 +35,9 @@ import kotlin.uuid.Uuid
 
 private val viewUuid = fastRandomUuid()
 
+/** 手势判定诊断日志（定位「拿盾挖不动方块」用）。 */
+private val gestureLogger = org.slf4j.LoggerFactory.getLogger("TouchController/Gesture")
+
 /** 视野区手势能做的全部动作。判定只产出它，执行只在 [ViewKeyGate.apply] 里发生。 */
 internal sealed interface ViewEffect {
     data object LockAttack : ViewEffect
@@ -256,6 +259,17 @@ internal fun Context.viewGestureRefactored() {
                     TweakAction.provider.canReachAroundPlace(),
             )
         )
+        if (decision.effects.isNotEmpty()) {
+            gestureLogger.info(
+                "hold: state={} press={} target={} usable={} -> {} {}",
+                state.viewState,
+                timer.clientTick - state.pressTime,
+                viewActionProvider.getCrosshairTarget(),
+                isHeldItemUsableNow(config.item.usableItems),
+                decision.newViewState,
+                decision.effects,
+            )
+        }
         gate.apply(decision.effects, timer.renderTick)
         if (decision.abortRemainingReleases) break
 
