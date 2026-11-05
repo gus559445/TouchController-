@@ -22,6 +22,7 @@ import top.fifthlight.touchcontroller.common.layout.CrosshairStatus
 import top.fifthlight.touchcontroller.common.layout.ViewGestureHook
 import top.fifthlight.touchcontroller.common.state.PointerState
 import top.fifthlight.touchcontroller.common.state.PointerState.View.ViewPointerState
+import top.fifthlight.touchcontroller.common.helper.SneakShieldHandler
 import top.fifthlight.touchcontroller.helper.EatGuard
 import kotlin.uuid.Uuid
 
@@ -181,11 +182,22 @@ internal class ViewKeyGate(
     fun apply(effects: List<ViewEffect>, renderTick: Int) {
         for (effect in effects) {
             when (effect) {
-                ViewEffect.LockAttack -> attack().addLock(owner, renderTick)
+                ViewEffect.LockAttack -> {
+                    // 举盾期间原版不允许挖方块（continueAttack 里 `!player.isUsingItem()`），
+                    // 先收盾，这一下才算数；不收的话要等下一帧 SneakShieldHandler 才发现
+                    // attacked，第一下就白点了。
+                    SneakShieldHandler.release(handler)
+                    attack().addLock(owner, renderTick)
+                }
                 ViewEffect.LockUse -> use().addLock(owner, renderTick)
                 ViewEffect.UnlockAttack -> attack().clearLock(owner)
                 ViewEffect.UnlockUse -> use().clearLock(owner)
-                ViewEffect.TapAttack -> attack().click()
+                ViewEffect.TapAttack -> {
+                    // 同上：举盾时点一下攻击，必须先收盾再发这一下，否则会被"正在使用物品"吞掉，
+                    // 表现就是点好几下才打出去一下。
+                    SneakShieldHandler.release(handler)
+                    attack().click()
+                }
                 ViewEffect.TapUse -> use().click()
                 ViewEffect.StartUseItem -> startUsingItem()
                 ViewEffect.SwingArm -> swingArm()
