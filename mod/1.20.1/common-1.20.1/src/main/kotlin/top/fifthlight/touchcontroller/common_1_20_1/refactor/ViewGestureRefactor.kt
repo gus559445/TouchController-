@@ -259,17 +259,6 @@ internal fun Context.viewGestureRefactored() {
                     TweakAction.provider.canReachAroundPlace(),
             )
         )
-        if (decision.effects.isNotEmpty()) {
-            gestureLogger.info(
-                "hold: state={} press={} target={} usable={} -> {} {}",
-                state.viewState,
-                timer.clientTick - state.pressTime,
-                viewActionProvider.getCrosshairTarget(),
-                isHeldItemUsableNow(config.item.usableItems),
-                decision.newViewState,
-                decision.effects,
-            )
-        }
         gate.apply(decision.effects, timer.renderTick)
         if (decision.abortRemainingReleases) break
 
@@ -323,6 +312,9 @@ internal fun Context.viewGestureRefactored() {
         }
 
         val crosshairTarget = viewActionProvider.getCrosshairTarget()
+        // 上游只看「物品在不在可用清单里」；满饥饿拿食物也会被判成可用，
+        // 于是长按方块变成吃东西（吃不下）而不挖。这里换成本刻真的能不能用。
+        val itemUsable = isHeldItemUsableNow(config.item.usableItems)
 
         val decision = ViewGestureMachine.onHold(
             ViewGestureMachine.HoldInput(
@@ -330,12 +322,21 @@ internal fun Context.viewGestureRefactored() {
                 pressTimeTicks = timer.clientTick - state.pressTime,
                 moving = moving,
                 crosshairTarget = crosshairTarget,
-                // 上游只看「物品在不在可用清单里」；满饥饿拿食物也会被判成可用，
-                // 于是长按方块变成吃东西（吃不下）而不挖。这里换成本刻真的能不能用。
-                itemUsable = isHeldItemUsableNow(config.item.usableItems),
+                itemUsable = itemUsable,
                 holdDetectTicks = config.control.viewHoldDetectTicks,
             )
         )
+        if (decision.effects.isNotEmpty()) {
+            gestureLogger.info(
+                "hold: state={} press={} target={} usable={} -> {} {}",
+                state.viewState,
+                timer.clientTick - state.pressTime,
+                crosshairTarget,
+                itemUsable,
+                decision.newViewState,
+                decision.effects,
+            )
+        }
         gate.apply(decision.effects, timer.renderTick)
 
         var nextViewState = decision.newViewState
