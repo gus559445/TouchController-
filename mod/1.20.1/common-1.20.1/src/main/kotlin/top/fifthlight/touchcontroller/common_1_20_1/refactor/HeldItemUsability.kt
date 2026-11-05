@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ProjectileWeaponItem
 import top.fifthlight.combine.platform_1_20_1.toCombine
+import top.fifthlight.touchcontroller.common_1_20_1.gal.ShieldWhitelist
 import top.fifthlight.touchcontroller.common.config.ItemList
 
 /** 原版饮食上限：饱食度到 20 就吃不下了。 */
@@ -34,7 +35,9 @@ internal fun findUsableHand(list: ItemList): InteractionHand? {
         // 判成可用的话，拿着盾长按方块会被当成 USING（一直举盾），方块就挖不动了；
         // 而且这条在「可长按使用」清单和黑名单之前返回，所以往清单里加盾 / 加黑名单都没用。
         // 潜行举盾由 SneakShieldHandler 每帧替玩家按住 USE 键，不经过这里。
-        if (stack.item is net.minecraft.world.item.ShieldItem) return@firstOrNull false
+        // 判定必须走 ShieldWhitelist：模组盾大多不是 ShieldItem 子类，
+        // 只看原版类会漏（现场日志就是这样：usable=true 而 hasShield=true）。
+        if (ShieldWhitelist.matches(stack)) return@firstOrNull false
         // 有蓄力时长的物品（弓 72000、月光蠕虫女王 FIRING_TIME 这类）长按就是蓄力，
         // 不看「可长按使用」清单 —— 它们不可能被「放/用一次」消费掉。
         // 这条对应主仓库 View.kt 里 itemUsable 的第一项 isLongPressUsableItem()。
